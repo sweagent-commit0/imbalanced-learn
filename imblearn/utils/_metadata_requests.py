@@ -76,49 +76,18 @@ of the ``RequestMethod`` descriptor to classes, which is done in the
 This mixin also implements the ``get_metadata_routing``, which meta-estimators
 need to override, but it works for simple consumers as is.
 """
-
-# Author: Adrin Jalali <adrin.jalali@gmail.com>
-# License: BSD 3 clause
-
 import inspect
 from collections import namedtuple
 from copy import deepcopy
 from typing import TYPE_CHECKING, Optional, Union
 from warnings import warn
-
 from sklearn import __version__, get_config
 from sklearn.utils import Bunch
 from sklearn.utils.fixes import parse_version
-
 sklearn_version = parse_version(__version__)
-
-if parse_version(sklearn_version.base_version) < parse_version("1.4"):
-    # Only the following methods are supported in the routing mechanism. Adding new
-    # methods at the moment involves monkeypatching this list.
-    # Note that if this list is changed or monkeypatched, the corresponding method
-    # needs to be added under a TYPE_CHECKING condition like the one done here in
-    # _MetadataRequester
-    SIMPLE_METHODS = [
-        "fit",
-        "partial_fit",
-        "predict",
-        "predict_proba",
-        "predict_log_proba",
-        "decision_function",
-        "score",
-        "split",
-        "transform",
-        "inverse_transform",
-    ]
-
-    # These methods are a composite of other methods and one cannot set their
-    # requests directly. Instead they should be set by setting the requests of the
-    # simple methods which make the composite ones.
-    COMPOSITE_METHODS = {
-        "fit_transform": ["fit", "transform"],
-        "fit_predict": ["fit", "predict"],
-    }
-
+if parse_version(sklearn_version.base_version) < parse_version('1.4'):
+    SIMPLE_METHODS = ['fit', 'partial_fit', 'predict', 'predict_proba', 'predict_log_proba', 'decision_function', 'score', 'split', 'transform', 'inverse_transform']
+    COMPOSITE_METHODS = {'fit_transform': ['fit', 'transform'], 'fit_predict': ['fit', 'predict']}
     METHODS = SIMPLE_METHODS + list(COMPOSITE_METHODS.keys())
 
     def _routing_enabled():
@@ -132,7 +101,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             Whether metadata routing is enabled. If the config is not set, it
             defaults to False.
         """
-        return get_config().get("enable_metadata_routing", False)
+        pass
 
     def _raise_for_params(params, owner, method):
         """Raise an error if metadata routing is not enabled and params are passed.
@@ -155,19 +124,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
         ValueError
             If metadata routing is not enabled and params are passed.
         """
-        caller = (
-            f"{owner.__class__.__name__}.{method}"
-            if method
-            else owner.__class__.__name__
-        )
-        if not _routing_enabled() and params:
-            raise ValueError(
-                f"Passing extra keyword arguments to {caller} is only supported if"
-                " enable_metadata_routing=True, which you can set using"
-                " `sklearn.set_config`. See the User Guide"
-                " <https://scikit-learn.org/stable/metadata_routing.html> for more"
-                f" details. Extra parameters passed are: {set(params)}"
-            )
+        pass
 
     def _raise_for_unsupported_routing(obj, method, **kwargs):
         """Raise when metadata routing is enabled and metadata is passed.
@@ -189,14 +146,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
         **kwargs : dict
             The metadata passed to the method.
         """
-        kwargs = {key: value for key, value in kwargs.items() if value is not None}
-        if _routing_enabled() and kwargs:
-            cls_name = obj.__class__.__name__
-            raise NotImplementedError(
-                f"{cls_name}.{method} cannot accept given metadata "
-                f"({set(kwargs.keys())}) since metadata routing is not yet implemented "
-                f"for {cls_name}."
-            )
+        pass
 
     class _RoutingNotSupportedMixin:
         """A mixin to be used to remove the default `get_metadata_routing`.
@@ -212,29 +162,10 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             """Raise `NotImplementedError`.
 
             This estimator does not support metadata routing yet."""
-            raise NotImplementedError(
-                f"{self.__class__.__name__} has not implemented metadata routing yet."
-            )
-
-    # Request values
-    # ==============
-    # Each request value needs to be one of the following values, or an alias.
-
-    # this is used in `__metadata_request__*` attributes to indicate that a
-    # metadata is not present even though it may be present in the
-    # corresponding method's signature.
-    UNUSED = "$UNUSED$"
-
-    # this is used whenever a default value is changed, and therefore the user
-    # should explicitly set the value, otherwise a warning is shown. An example
-    # is when a meta-estimator is only a router, but then becomes also a
-    # consumer in a new release.
-    WARN = "$WARN$"
-
-    # this is the default used in `set_{method}_request` methods to indicate no
-    # change requested by the user.
-    UNCHANGED = "$UNCHANGED$"
-
+            pass
+    UNUSED = '$UNUSED$'
+    WARN = '$WARN$'
+    UNCHANGED = '$UNCHANGED$'
     VALID_REQUEST_VALUES = [False, True, None, UNUSED, WARN]
 
     def request_is_alias(item):
@@ -253,11 +184,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
         result : bool
             Whether the given item is a valid alias.
         """
-        if item in VALID_REQUEST_VALUES:
-            return False
-
-        # item is only an alias if it's a valid identifier
-        return isinstance(item, str) and item.isidentifier()
+        pass
 
     def request_is_valid(item):
         """Check if an item is a valid request value (and not an alias).
@@ -272,12 +199,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
         result : bool
             Whether the given item is valid.
         """
-        return item in VALID_REQUEST_VALUES
-
-    # Metadata Request for Simple Consumers
-    # =====================================
-    # This section includes MethodMetadataRequest and MetadataRequest which are
-    # used in simple consumers.
+        pass
 
     class MethodMetadataRequest:
         """A prescription of how metadata is to be passed to a single method.
@@ -306,14 +228,9 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
         @property
         def requests(self):
             """Dictionary of the form: ``{key: alias}``."""
-            return self._requests
+            pass
 
-        def add_request(
-            self,
-            *,
-            param,
-            alias,
-        ):
+        def add_request(self, *, param, alias):
             """Add request info for a metadata.
 
             Parameters
@@ -333,28 +250,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
 
                 - None: error if passed
             """
-            if not request_is_alias(alias) and not request_is_valid(alias):
-                raise ValueError(
-                    f"The alias you're setting for `{param}` should be either a "
-                    "valid identifier or one of {None, True, False}, but given "
-                    f"value is: `{alias}`"
-                )
-
-            if alias == param:
-                alias = True
-
-            if alias == UNUSED:
-                if param in self._requests:
-                    del self._requests[param]
-                else:
-                    raise ValueError(
-                        f"Trying to remove parameter {param} with UNUSED which doesn't"
-                        " exist."
-                    )
-            else:
-                self._requests[param] = alias
-
-            return self
+            pass
 
         def _get_param_names(self, return_alias):
             """Get names of all metadata that can be consumed or routed by this method.
@@ -373,11 +269,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             names : set of str
                 A set of strings with the names of all parameters.
             """
-            return set(
-                alias if return_alias and not request_is_valid(alias) else prop
-                for prop, alias in self._requests.items()
-                if not request_is_valid(alias) or alias is not False
-            )
+            pass
 
         def _check_warnings(self, *, params):
             """Check whether metadata is passed which is marked as WARN.
@@ -389,19 +281,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             params : dict
                 The metadata passed to a method.
             """
-            params = {} if params is None else params
-            warn_params = {
-                prop
-                for prop, alias in self._requests.items()
-                if alias == WARN and prop in params
-            }
-            for param in warn_params:
-                warn(
-                    f"Support for {param} has recently been added to this class. "
-                    "To maintain backward compatibility, it is ignored now. "
-                    "You can set the request value to False to silence this "
-                    "warning, or to True to consume and use the metadata."
-                )
+            pass
 
         def _route_params(self, params):
             """Prepare the given parameters to be passed to the method.
@@ -420,30 +300,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
                 A :class:`~sklearn.utils.Bunch` of {prop: value} which can be given to
                 the corresponding method.
             """
-            self._check_warnings(params=params)
-            unrequested = dict()
-            args = {arg: value for arg, value in params.items() if value is not None}
-            res = Bunch()
-            for prop, alias in self._requests.items():
-                if alias is False or alias == WARN:
-                    continue
-                elif alias is True and prop in args:
-                    res[prop] = args[prop]
-                elif alias is None and prop in args:
-                    unrequested[prop] = args[prop]
-                elif alias in args:
-                    res[prop] = args[alias]
-            if unrequested:
-                raise UnsetMetadataPassedError(
-                    message=(
-                        f"[{', '.join([key for key in unrequested])}] are passed but "
-                        "are not explicitly set as requested or not for"
-                        f" {self.owner}.{self.method}"
-                    ),
-                    unrequested_params=unrequested,
-                    routed_params=res,
-                )
-            return res
+            pass
 
         def _consumes(self, params):
             """Check whether the given parameters are consumed by this method.
@@ -458,14 +315,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             consumed : set of str
                 A set of parameters which are consumed by this method.
             """
-            params = set(params)
-            res = set()
-            for prop, alias in self._requests.items():
-                if alias is True and prop in params:
-                    res.add(prop)
-                elif isinstance(alias, str) and alias in params:
-                    res.add(alias)
-            return res
+            pass
 
         def _serialize(self):
             """Serialize the object.
@@ -475,7 +325,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             obj : dict
                 A serialized version of the instance in the form of a dictionary.
             """
-            return self._requests
+            pass
 
         def __repr__(self):
             return str(self._serialize())
@@ -499,20 +349,12 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
         owner : str
             The name of the object to which these requests belong.
         """
-
-        # this is here for us to use this attribute's value instead of doing
-        # `isinstance` in our checks, so that we avoid issues when people vendor
-        # this file instead of using it directly from scikit-learn.
-        _type = "metadata_request"
+        _type = 'metadata_request'
 
         def __init__(self, owner):
             self.owner = owner
             for method in SIMPLE_METHODS:
-                setattr(
-                    self,
-                    method,
-                    MethodMetadataRequest(owner=owner, method=method),
-                )
+                setattr(self, method, MethodMetadataRequest(owner=owner, method=method))
 
         def consumes(self, method, params):
             """Check whether the given parameters are consumed by the given method.
@@ -532,45 +374,25 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             consumed : set of str
                 A set of parameters which are consumed by the given method.
             """
-            return getattr(self, method)._consumes(params=params)
+            pass
 
         def __getattr__(self, name):
-            # Called when the default attribute access fails with an AttributeError
-            # (either __getattribute__() raises an AttributeError because name is
-            # not an instance attribute or an attribute in the class tree for self;
-            # or __get__() of a name property raises AttributeError). This method
-            # should either return the (computed) attribute value or raise an
-            # AttributeError exception.
-            # https://docs.python.org/3/reference/datamodel.html#object.__getattr__
             if name not in COMPOSITE_METHODS:
-                raise AttributeError(
-                    f"'{self.__class__.__name__}' object has no attribute '{name}'"
-                )
-
+                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
             requests = {}
             for method in COMPOSITE_METHODS[name]:
                 mmr = getattr(self, method)
                 existing = set(requests.keys())
                 upcoming = set(mmr.requests.keys())
                 common = existing & upcoming
-                conflicts = [
-                    key for key in common if requests[key] != mmr._requests[key]
-                ]
+                conflicts = [key for key in common if requests[key] != mmr._requests[key]]
                 if conflicts:
-                    raise ValueError(
-                        f"Conflicting metadata requests for {', '.join(conflicts)} "
-                        f"while composing the requests for {name}. Metadata with the "
-                        f"same name for methods {', '.join(COMPOSITE_METHODS[name])} "
-                        "should have the same request value."
-                    )
+                    raise ValueError(f'Conflicting metadata requests for {', '.join(conflicts)} while composing the requests for {name}. Metadata with the same name for methods {', '.join(COMPOSITE_METHODS[name])} should have the same request value.')
                 requests.update(mmr._requests)
-            return MethodMetadataRequest(
-                owner=self.owner, method=name, requests=requests
-            )
+            return MethodMetadataRequest(owner=self.owner, method=name, requests=requests)
 
         def _get_param_names(self, method, return_alias, ignore_self_request=None):
-            """Get names of all metadata that can be consumed or routed by specified \
-                method.
+            """Get names of all metadata that can be consumed or routed by specified                 method.
 
             This method returns the names of all metadata, even the ``False``
             ones.
@@ -592,7 +414,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             names : set of str
                 A set of strings with the names of all parameters.
             """
-            return getattr(self, method)._get_param_names(return_alias=return_alias)
+            pass
 
         def _route_params(self, *, method, params):
             """Prepare the given parameters to be passed to the method.
@@ -615,7 +437,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
                 A :class:`~sklearn.utils.Bunch` of {prop: value} which can be given to
                 the corresponding method.
             """
-            return getattr(self, method)._route_params(params=params)
+            pass
 
         def _check_warnings(self, *, method, params):
             """Check whether metadata is passed which is marked as WARN.
@@ -630,7 +452,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             params : dict
                 The metadata passed to a method.
             """
-            getattr(self, method)._check_warnings(params=params)
+            pass
 
         def _serialize(self):
             """Serialize the object.
@@ -640,32 +462,15 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             obj : dict
                 A serialized version of the instance in the form of a dictionary.
             """
-            output = dict()
-            for method in SIMPLE_METHODS:
-                mmr = getattr(self, method)
-                if len(mmr.requests):
-                    output[method] = mmr._serialize()
-            return output
+            pass
 
         def __repr__(self):
             return str(self._serialize())
 
         def __str__(self):
             return str(repr(self))
-
-    # Metadata Request for Routers
-    # ============================
-    # This section includes all objects required for MetadataRouter which is used
-    # in routers, returned by their ``get_metadata_routing``.
-
-    # This namedtuple is used to store a (mapping, routing) pair. Mapping is a
-    # MethodMapping object, and routing is the output of `get_metadata_routing`.
-    # MetadataRouter stores a collection of these namedtuples.
-    RouterMappingPair = namedtuple("RouterMappingPair", ["mapping", "router"])
-
-    # A namedtuple storing a single method route. A collection of these namedtuples
-    # is stored in a MetadataRouter.
-    MethodPair = namedtuple("MethodPair", ["callee", "caller"])
+    RouterMappingPair = namedtuple('RouterMappingPair', ['mapping', 'router'])
+    MethodPair = namedtuple('MethodPair', ['callee', 'caller'])
 
     class MethodMapping:
         """Stores the mapping between callee and caller methods for a router.
@@ -703,18 +508,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             self : MethodMapping
                 Returns self.
             """
-            if callee not in METHODS:
-                raise ValueError(
-                    f"Given callee:{callee} is not a valid method. Valid methods are:"
-                    f" {METHODS}"
-                )
-            if caller not in METHODS:
-                raise ValueError(
-                    f"Given caller:{caller} is not a valid method. Valid methods are:"
-                    f" {METHODS}"
-                )
-            self._routes.append(MethodPair(callee=callee, caller=caller))
-            return self
+            pass
 
         def _serialize(self):
             """Serialize the object.
@@ -724,10 +518,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             obj : list
                 A serialized version of the instance in the form of a list.
             """
-            result = list()
-            for route in self._routes:
-                result.append({"callee": route.callee, "caller": route.caller})
-            return result
+            pass
 
         @classmethod
         def from_str(cls, route):
@@ -748,15 +539,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
                 A :class:`~sklearn.utils.metadata_routing.MethodMapping` instance
                 constructed from the given string.
             """
-            routing = cls()
-            if route == "one-to-one":
-                for method in METHODS:
-                    routing.add(callee=method, caller=method)
-            elif route in METHODS:
-                routing.add(callee=route, caller=route)
-            else:
-                raise ValueError("route should be 'one-to-one' or a single method!")
-            return routing
+            pass
 
         def __repr__(self):
             return str(self._serialize())
@@ -782,18 +565,10 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
         owner : str
             The name of the object to which these requests belong.
         """
-
-        # this is here for us to use this attribute's value instead of doing
-        # `isinstance`` in our checks, so that we avoid issues when people vendor
-        # this file instead of using it directly from scikit-learn.
-        _type = "metadata_router"
+        _type = 'metadata_router'
 
         def __init__(self, owner):
             self._route_mappings = dict()
-            # `_self_request` is used if the router is also a consumer.
-            # _self_request, (added using `add_self_request()`) is treated
-            # differently from the other objects which are stored in
-            # _route_mappings.
             self._self_request = None
             self.owner = owner
 
@@ -821,17 +596,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             self : MetadataRouter
                 Returns `self`.
             """
-            if getattr(obj, "_type", None) == "metadata_request":
-                self._self_request = deepcopy(obj)
-            elif hasattr(obj, "_get_metadata_request"):
-                self._self_request = deepcopy(obj._get_metadata_request())
-            else:
-                raise ValueError(
-                    "Given `obj` is neither a `MetadataRequest` nor does it implement "
-                    "the required API. Inheriting from `BaseEstimator` implements the "
-                    "required API."
-                )
-            return self
+            pass
 
         def add(self, *, method_mapping, **objs):
             """Add named objects with their corresponding method mapping.
@@ -852,16 +617,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             self : MetadataRouter
                 Returns `self`.
             """
-            if isinstance(method_mapping, str):
-                method_mapping = MethodMapping.from_str(method_mapping)
-            else:
-                method_mapping = deepcopy(method_mapping)
-
-            for name, obj in objs.items():
-                self._route_mappings[name] = RouterMappingPair(
-                    mapping=method_mapping, router=get_routing_for_object(obj)
-                )
-            return self
+            pass
 
         def consumes(self, method, params):
             """Check whether the given parameters are consumed by the given method.
@@ -881,22 +637,10 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             consumed : set of str
                 A set of parameters which are consumed by the given method.
             """
-            res = set()
-            if self._self_request:
-                res = res | self._self_request.consumes(method=method, params=params)
-
-            for _, route_mapping in self._route_mappings.items():
-                for callee, caller in route_mapping.mapping:
-                    if caller == method:
-                        res = res | route_mapping.router.consumes(
-                            method=callee, params=params
-                        )
-
-            return res
+            pass
 
         def _get_param_names(self, *, method, return_alias, ignore_self_request):
-            """Get names of all metadata that can be consumed or routed by specified \
-                method.
+            """Get names of all metadata that can be consumed or routed by specified                 method.
 
             This method returns the names of all metadata, even the ``False``
             ones.
@@ -920,25 +664,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             names : set of str
                 A set of strings with the names of all parameters.
             """
-            res = set()
-            if self._self_request and not ignore_self_request:
-                res = res.union(
-                    self._self_request._get_param_names(
-                        method=method, return_alias=return_alias
-                    )
-                )
-
-            for name, route_mapping in self._route_mappings.items():
-                for callee, caller in route_mapping.mapping:
-                    if caller == method:
-                        res = res.union(
-                            route_mapping.router._get_param_names(
-                                method=callee,
-                                return_alias=True,
-                                ignore_self_request=False,
-                            )
-                        )
-            return res
+            pass
 
         def _route_params(self, *, params, method):
             """Prepare the given parameters to be passed to the method.
@@ -965,31 +691,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
                 A :class:`~sklearn.utils.Bunch` of {prop: value} which can be given to
                 the corresponding method.
             """
-            res = Bunch()
-            if self._self_request:
-                res.update(
-                    self._self_request._route_params(params=params, method=method)
-                )
-
-            param_names = self._get_param_names(
-                method=method, return_alias=True, ignore_self_request=True
-            )
-            child_params = {
-                key: value for key, value in params.items() if key in param_names
-            }
-            for key in set(res.keys()).intersection(child_params.keys()):
-                # conflicts are okay if the passed objects are the same, but it's
-                # an issue if they're different objects.
-                if child_params[key] is not res[key]:
-                    raise ValueError(
-                        f"In {self.owner}, there is a conflict on {key} between what is"
-                        " requested for this estimator and what is requested by its"
-                        " children. You can resolve this conflict by using an alias for"
-                        " the child estimator(s) requested metadata."
-                    )
-
-            res.update(child_params)
-            return res
+            pass
 
         def route_params(self, *, caller, params):
             """Return the input parameters requested by child objects.
@@ -1019,20 +721,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
                 used to pass the required metadata to corresponding methods or
                 corresponding child objects.
             """
-            if self._self_request:
-                self._self_request._check_warnings(params=params, method=caller)
-
-            res = Bunch()
-            for name, route_mapping in self._route_mappings.items():
-                router, mapping = route_mapping.router, route_mapping.mapping
-
-                res[name] = Bunch()
-                for _callee, _caller in mapping:
-                    if _caller == caller:
-                        res[name][_callee] = router._route_params(
-                            params=params, method=_callee
-                        )
-            return res
+            pass
 
         def validate_metadata(self, *, method, params):
             """Validate given metadata for a method.
@@ -1050,21 +739,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             params : dict
                 A dictionary of provided metadata.
             """
-            param_names = self._get_param_names(
-                method=method, return_alias=False, ignore_self_request=False
-            )
-            if self._self_request:
-                self_params = self._self_request._get_param_names(
-                    method=method, return_alias=False
-                )
-            else:
-                self_params = set()
-            extra_keys = set(params.keys()) - param_names - self_params
-            if extra_keys:
-                raise TypeError(
-                    f"{self.owner}.{method} got unexpected argument(s) {extra_keys}, "
-                    "which are not requested metadata in any object."
-                )
+            pass
 
         def _serialize(self):
             """Serialize the object.
@@ -1074,25 +749,11 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             obj : dict
                 A serialized version of the instance in the form of a dictionary.
             """
-            res = dict()
-            if self._self_request:
-                res["$self_request"] = self._self_request._serialize()
-            for name, route_mapping in self._route_mappings.items():
-                res[name] = dict()
-                res[name]["mapping"] = route_mapping.mapping._serialize()
-                res[name]["router"] = route_mapping.router._serialize()
-
-            return res
+            pass
 
         def __iter__(self):
             if self._self_request:
-                yield (
-                    "$self_request",
-                    RouterMappingPair(
-                        mapping=MethodMapping.from_str("one-to-one"),
-                        router=self._self_request,
-                    ),
-                )
+                yield ('$self_request', RouterMappingPair(mapping=MethodMapping.from_str('one-to-one'), router=self._self_request))
             for name, route_mapping in self._route_mappings.items():
                 yield (name, route_mapping)
 
@@ -1133,69 +794,10 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             A ``MetadataRequest`` or a ``MetadataRouting`` taken or created from
             the given object.
         """
-        # doing this instead of a try/except since an AttributeError could be raised
-        # for other reasons.
-        if hasattr(obj, "get_metadata_routing"):
-            return deepcopy(obj.get_metadata_routing())
-
-        elif getattr(obj, "_type", None) in ["metadata_request", "metadata_router"]:
-            return deepcopy(obj)
-
-        return MetadataRequest(owner=None)
-
-    # Request method
-    # ==============
-    # This section includes what's needed for the request method descriptor and
-    # their dynamic generation in a meta class.
-
-    # These strings are used to dynamically generate the docstrings for
-    # set_{method}_request methods.
-    REQUESTER_DOC = """        Request metadata passed to the ``{method}`` method.
-
-            Note that this method is only relevant if
-            ``enable_metadata_routing=True`` (see :func:`sklearn.set_config`).
-            Please see :ref:`User Guide <metadata_routing>` on how the routing
-            mechanism works.
-
-            The options for each parameter are:
-
-            - ``True``: metadata is requested, and \
-    passed to ``{method}`` if provided. The request is ignored if \
-    metadata is not provided.
-
-            - ``False``: metadata is not requested and the meta-estimator \
-    will not pass it to ``{method}``.
-
-            - ``None``: metadata is not requested, and the meta-estimator \
-    will raise an error if the user provides it.
-
-            - ``str``: metadata should be passed to the meta-estimator with \
-    this given alias instead of the original name.
-
-            The default (``sklearn.utils.metadata_routing.UNCHANGED``) retains the
-            existing request. This allows you to change the request for some
-            parameters and not others.
-
-            .. versionadded:: 1.3
-
-            .. note::
-                This method is only relevant if this estimator is used as a
-                sub-estimator of a meta-estimator, e.g. used inside a
-                :class:`~sklearn.pipeline.Pipeline`. Otherwise it has no effect.
-
-            Parameters
-            ----------
-    """
-    REQUESTER_DOC_PARAM = """        {metadata} : str, True, False, or None, \
-                        default=sklearn.utils.metadata_routing.UNCHANGED
-                Metadata routing for ``{metadata}`` parameter in ``{method}``.
-
-    """
-    REQUESTER_DOC_RETURN = """        Returns
-            -------
-            self : object
-                The updated object.
-    """
+        pass
+    REQUESTER_DOC = '        Request metadata passed to the ``{method}`` method.\n\n            Note that this method is only relevant if\n            ``enable_metadata_routing=True`` (see :func:`sklearn.set_config`).\n            Please see :ref:`User Guide <metadata_routing>` on how the routing\n            mechanism works.\n\n            The options for each parameter are:\n\n            - ``True``: metadata is requested, and     passed to ``{method}`` if provided. The request is ignored if     metadata is not provided.\n\n            - ``False``: metadata is not requested and the meta-estimator     will not pass it to ``{method}``.\n\n            - ``None``: metadata is not requested, and the meta-estimator     will raise an error if the user provides it.\n\n            - ``str``: metadata should be passed to the meta-estimator with     this given alias instead of the original name.\n\n            The default (``sklearn.utils.metadata_routing.UNCHANGED``) retains the\n            existing request. This allows you to change the request for some\n            parameters and not others.\n\n            .. versionadded:: 1.3\n\n            .. note::\n                This method is only relevant if this estimator is used as a\n                sub-estimator of a meta-estimator, e.g. used inside a\n                :class:`~sklearn.pipeline.Pipeline`. Otherwise it has no effect.\n\n            Parameters\n            ----------\n    '
+    REQUESTER_DOC_PARAM = '        {metadata} : str, True, False, or None,                         default=sklearn.utils.metadata_routing.UNCHANGED\n                Metadata routing for ``{metadata}`` parameter in ``{method}``.\n\n    '
+    REQUESTER_DOC_RETURN = '        Returns\n            -------\n            self : object\n                The updated object.\n    '
 
     class RequestMethod:
         """
@@ -1236,7 +838,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             self.validate_keys = validate_keys
 
         def __get__(self, instance, owner):
-            # we would want to have a method which accepts only the expected args
+
             def func(*args, **kw):
                 """Updates the request for provided parameters
 
@@ -1244,70 +846,27 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
                 See REQUESTER_DOC for expected functionality
                 """
                 if not _routing_enabled():
-                    raise RuntimeError(
-                        "This method is only available when metadata routing is "
-                        "enabled. You can enable it using"
-                        " sklearn.set_config(enable_metadata_routing=True)."
-                    )
-
-                if self.validate_keys and (set(kw) - set(self.keys)):
-                    raise TypeError(
-                        f"Unexpected args: {set(kw) - set(self.keys)}. Accepted "
-                        f"arguments are: {set(self.keys)}"
-                    )
-
-                # This makes it possible to use the decorated method as an unbound
-                # method, for instance when monkeypatching.
-                # https://github.com/scikit-learn/scikit-learn/issues/28632
+                    raise RuntimeError('This method is only available when metadata routing is enabled. You can enable it using sklearn.set_config(enable_metadata_routing=True).')
+                if self.validate_keys and set(kw) - set(self.keys):
+                    raise TypeError(f'Unexpected args: {set(kw) - set(self.keys)}. Accepted arguments are: {set(self.keys)}')
                 if instance is None:
                     _instance = args[0]
                     args = args[1:]
                 else:
                     _instance = instance
-
-                # Replicating python's behavior when positional args are given other
-                # than `self`, and `self` is only allowed if this method is unbound.
                 if args:
-                    raise TypeError(
-                        f"set_{self.name}_request() takes 0 positional argument but"
-                        f" {len(args)} were given"
-                    )
-
+                    raise TypeError(f'set_{self.name}_request() takes 0 positional argument but {len(args)} were given')
                 requests = _instance._get_metadata_request()
                 method_metadata_request = getattr(requests, self.name)
-
                 for prop, alias in kw.items():
                     if alias is not UNCHANGED:
                         method_metadata_request.add_request(param=prop, alias=alias)
                 _instance._metadata_request = requests
-
                 return _instance
-
-            # Now we set the relevant attributes of the function so that it seems
-            # like a normal method to the end user, with known expected arguments.
-            func.__name__ = f"set_{self.name}_request"
-            params = [
-                inspect.Parameter(
-                    name="self",
-                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=owner,
-                )
-            ]
-            params.extend(
-                [
-                    inspect.Parameter(
-                        k,
-                        inspect.Parameter.KEYWORD_ONLY,
-                        default=UNCHANGED,
-                        annotation=Optional[Union[bool, None, str]],
-                    )
-                    for k in self.keys
-                ]
-            )
-            func.__signature__ = inspect.Signature(
-                params,
-                return_annotation=owner,
-            )
+            func.__name__ = f'set_{self.name}_request'
+            params = [inspect.Parameter(name='self', kind=inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=owner)]
+            params.extend([inspect.Parameter(k, inspect.Parameter.KEYWORD_ONLY, default=UNCHANGED, annotation=Optional[Union[bool, None, str]]) for k in self.keys])
+            func.__signature__ = inspect.Signature(params, return_annotation=owner)
             doc = REQUESTER_DOC.format(method=self.name)
             for metadata in self.keys:
                 doc += REQUESTER_DOC_PARAM.format(metadata=metadata, method=self.name)
@@ -1322,27 +881,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
 
         .. versionadded:: 1.3
         """
-
-        if TYPE_CHECKING:  # pragma: no cover
-            # This code is never run in runtime, but it's here for type checking.
-            # Type checkers fail to understand that the `set_{method}_request`
-            # methods are dynamically generated, and they complain that they are
-            # not defined. We define them here to make type checkers happy.
-            # During type checking analyzers assume this to be True.
-            # The following list of defined methods mirrors the list of methods
-            # in SIMPLE_METHODS.
-            # fmt: off
-            def set_fit_request(self, **kwargs): pass
-            def set_partial_fit_request(self, **kwargs): pass
-            def set_predict_request(self, **kwargs): pass
-            def set_predict_proba_request(self, **kwargs): pass
-            def set_predict_log_proba_request(self, **kwargs): pass
-            def set_decision_function_request(self, **kwargs): pass
-            def set_score_request(self, **kwargs): pass
-            def set_split_request(self, **kwargs): pass
-            def set_transform_request(self, **kwargs): pass
-            def set_inverse_transform_request(self, **kwargs): pass
-            # fmt: on
+        if TYPE_CHECKING:
 
         def __init_subclass__(cls, **kwargs):
             """Set the ``set_{method}_request`` methods.
@@ -1364,22 +903,13 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             try:
                 requests = cls._get_default_requests()
             except Exception:
-                # if there are any issues in the default values, it will be raised
-                # when ``get_metadata_routing`` is called. Here we are going to
-                # ignore all the issues such as bad defaults etc.
                 super().__init_subclass__(**kwargs)
                 return
-
             for method in SIMPLE_METHODS:
                 mmr = getattr(requests, method)
-                # set ``set_{method}_request``` methods
                 if not len(mmr.requests):
                     continue
-                setattr(
-                    cls,
-                    f"set_{method}_request",
-                    RequestMethod(method, sorted(mmr.requests.keys())),
-                )
+                setattr(cls, f'set_{method}_request', RequestMethod(method, sorted(mmr.requests.keys())))
             super().__init_subclass__(**kwargs)
 
         @classmethod
@@ -1402,25 +932,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             method_request : MethodMetadataRequest
                 The prepared request using the method's signature.
             """
-            mmr = MethodMetadataRequest(owner=cls.__name__, method=method)
-            # Here we use `isfunction` instead of `ismethod` because calling `getattr`
-            # on a class instead of an instance returns an unbound function.
-            if not hasattr(cls, method) or not inspect.isfunction(getattr(cls, method)):
-                return mmr
-            # ignore the first parameter of the method, which is usually "self"
-            params = list(inspect.signature(getattr(cls, method)).parameters.items())[
-                1:
-            ]
-            for pname, param in params:
-                if pname in {"X", "y", "Y", "Xt", "yt"}:
-                    continue
-                if param.kind in {param.VAR_POSITIONAL, param.VAR_KEYWORD}:
-                    continue
-                mmr.add_request(
-                    param=pname,
-                    alias=None,
-                )
-            return mmr
+            pass
 
         @classmethod
         def _get_default_requests(cls):
@@ -1430,43 +942,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             class attributes, as well as determining request keys from method
             signatures.
             """
-            requests = MetadataRequest(owner=cls.__name__)
-
-            for method in SIMPLE_METHODS:
-                setattr(
-                    requests,
-                    method,
-                    cls._build_request_for_signature(router=requests, method=method),
-                )
-
-            # Then overwrite those defaults with the ones provided in
-            # __metadata_request__* attributes. Defaults set in
-            # __metadata_request__* attributes take precedence over signature
-            # sniffing.
-
-            # need to go through the MRO since this is a class attribute and
-            # ``vars`` doesn't report the parent class attributes. We go through
-            # the reverse of the MRO so that child classes have precedence over
-            # their parents.
-            defaults = dict()
-            for base_class in reversed(inspect.getmro(cls)):
-                base_defaults = {
-                    attr: value
-                    for attr, value in vars(base_class).items()
-                    if "__metadata_request__" in attr
-                }
-                defaults.update(base_defaults)
-            defaults = dict(sorted(defaults.items()))
-
-            for attr, value in defaults.items():
-                # we don't check for attr.startswith() since python prefixes attrs
-                # starting with __ with the `_ClassName`.
-                substr = "__metadata_request__"
-                method = attr[attr.index(substr) + len(substr) :]
-                for prop, alias in value.items():
-                    getattr(requests, method).add_request(param=prop, alias=alias)
-
-            return requests
+            pass
 
         def _get_metadata_request(self):
             """Get requested data properties.
@@ -1479,12 +955,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             request : MetadataRequest
                 A :class:`~sklearn.utils.metadata_routing.MetadataRequest` instance.
             """
-            if hasattr(self, "_metadata_request"):
-                requests = get_routing_for_object(self._metadata_request)
-            else:
-                requests = self._get_default_requests()
-
-            return requests
+            pass
 
         def get_metadata_routing(self):
             """Get metadata routing of this object.
@@ -1498,17 +969,8 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
                 A :class:`~sklearn.utils.metadata_routing.MetadataRequest` encapsulating
                 routing information.
             """
-            return self._get_metadata_request()
+            pass
 
-    # Process Routing in Routers
-    # ==========================
-    # This is almost always the only method used in routers to process and route
-    # given metadata. This is to minimize the boilerplate required in routers.
-
-    # Here the first two arguments are positional only which makes everything
-    # passed as keyword argument a metadata. The first two args also have an `_`
-    # prefix to reduce the chances of name collisions with the passed metadata, and
-    # since they're positional only, users will never type those underscores.
     def process_routing(_obj, _method, /, **kwargs):
         """Validate and route input parameters.
 
@@ -1545,59 +1007,7 @@ if parse_version(sklearn_version.base_version) < parse_version("1.4"):
             metadata to corresponding methods or corresponding child objects. The object
             names are those defined in `obj.get_metadata_routing()`.
         """
-        if not kwargs:
-            # If routing is not enabled and kwargs are empty, then we don't have to
-            # try doing any routing, we can simply return a structure which returns
-            # an empty dict on routed_params.ANYTHING.ANY_METHOD.
-            class EmptyRequest:
-                def get(self, name, default=None):
-                    return Bunch(**{method: dict() for method in METHODS})
-
-                def __getitem__(self, name):
-                    return Bunch(**{method: dict() for method in METHODS})
-
-                def __getattr__(self, name):
-                    return Bunch(**{method: dict() for method in METHODS})
-
-            return EmptyRequest()
-
-        if not (
-            hasattr(_obj, "get_metadata_routing") or isinstance(_obj, MetadataRouter)
-        ):
-            raise AttributeError(
-                f"The given object ({repr(_obj.__class__.__name__)}) needs to either"
-                " implement the routing method `get_metadata_routing` or be a"
-                " `MetadataRouter` instance."
-            )
-        if _method not in METHODS:
-            raise TypeError(
-                f"Can only route and process input on these methods: {METHODS}, "
-                f"while the passed method is: {_method}."
-            )
-
-        request_routing = get_routing_for_object(_obj)
-        request_routing.validate_metadata(params=kwargs, method=_method)
-        routed_params = request_routing.route_params(params=kwargs, caller=_method)
-
-        return routed_params
-
+        pass
 else:
     from sklearn.exceptions import UnsetMetadataPassedError
-    from sklearn.utils._metadata_requests import (  # type: ignore[no-redef]
-        COMPOSITE_METHODS,  # noqa
-        METHODS,  # noqa
-        SIMPLE_METHODS,  # noqa
-        UNCHANGED,
-        UNUSED,
-        WARN,
-        MetadataRequest,
-        MetadataRouter,
-        MethodMapping,
-        _MetadataRequester,  # noqa
-        _raise_for_params,  # noqa
-        _raise_for_unsupported_routing,  # noqa
-        _routing_enabled,
-        _RoutingNotSupportedMixin,  # noqa
-        get_routing_for_object,
-        process_routing,  # noqa
-    )
+    from sklearn.utils._metadata_requests import COMPOSITE_METHODS, METHODS, SIMPLE_METHODS, UNCHANGED, UNUSED, WARN, MetadataRequest, MetadataRouter, MethodMapping, _MetadataRequester, _raise_for_params, _raise_for_unsupported_routing, _routing_enabled, _RoutingNotSupportedMixin, get_routing_for_object, process_routing

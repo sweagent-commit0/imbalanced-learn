@@ -1,4 +1,3 @@
-# coding: utf-8
 """Metrics to assess performance on a classification task given class
 predictions. The available metrics are complementary from the metrics available
 in scikit-learn.
@@ -9,16 +8,10 @@ the better
 Function named as ``*_error`` or ``*_loss`` return a scalar value to minimize:
 the lower the better
 """
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Dariusz Brzezinski
-# License: MIT
-
 import functools
 import numbers
 import warnings
 from inspect import signature
-
 import numpy as np
 import scipy as sp
 from sklearn.metrics import mean_absolute_error, precision_recall_fscore_support
@@ -26,35 +19,10 @@ from sklearn.metrics._classification import _check_targets, _prf_divide
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_consistent_length, column_or_1d
-
 from ..utils._param_validation import Interval, StrOptions, validate_params
 
-
-@validate_params(
-    {
-        "y_true": ["array-like"],
-        "y_pred": ["array-like"],
-        "labels": ["array-like", None],
-        "pos_label": [str, numbers.Integral, None],
-        "average": [
-            None,
-            StrOptions({"binary", "micro", "macro", "weighted", "samples"}),
-        ],
-        "warn_for": ["array-like"],
-        "sample_weight": ["array-like", None],
-    },
-    prefer_skip_nested_validation=True,
-)
-def sensitivity_specificity_support(
-    y_true,
-    y_pred,
-    *,
-    labels=None,
-    pos_label=1,
-    average=None,
-    warn_for=("sensitivity", "specificity"),
-    sample_weight=None,
-):
+@validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'labels': ['array-like', None], 'pos_label': [str, numbers.Integral, None], 'average': [None, StrOptions({'binary', 'micro', 'macro', 'weighted', 'samples'})], 'warn_for': ['array-like'], 'sample_weight': ['array-like', None]}, prefer_skip_nested_validation=True)
+def sensitivity_specificity_support(y_true, y_pred, *, labels=None, pos_label=1, average=None, warn_for=('sensitivity', 'specificity'), sample_weight=None):
     """Compute sensitivity, specificity, and support for each class.
 
     The sensitivity is the ratio ``tp / (tp + fn)`` where ``tp`` is the number
@@ -131,16 +99,13 @@ def sensitivity_specificity_support(
 
     Returns
     -------
-    sensitivity : float (if `average is None`) or ndarray of \
-            shape (n_unique_labels,)
+    sensitivity : float (if `average is None`) or ndarray of             shape (n_unique_labels,)
         The sensitivity metric.
 
-    specificity : float (if `average is None`) or ndarray of \
-            shape (n_unique_labels,)
+    specificity : float (if `average is None`) or ndarray of             shape (n_unique_labels,)
         The specificity metric.
 
-    support : int (if `average is None`) or ndarray of \
-            shape (n_unique_labels,)
+    support : int (if `average is None`) or ndarray of             shape (n_unique_labels,)
         The number of occurrences of each label in ``y_true``.
 
     References
@@ -161,163 +126,10 @@ def sensitivity_specificity_support(
     >>> sensitivity_specificity_support(y_true, y_pred, average='weighted')
     (0.33..., 0.66..., None)
     """
-    average_options = (None, "micro", "macro", "weighted", "samples")
-    if average not in average_options and average != "binary":
-        raise ValueError("average has to be one of " + str(average_options))
+    pass
 
-    y_type, y_true, y_pred = _check_targets(y_true, y_pred)
-    present_labels = unique_labels(y_true, y_pred)
-
-    if average == "binary":
-        if y_type == "binary":
-            if pos_label not in present_labels:
-                if len(present_labels) < 2:
-                    # Only negative labels
-                    return (0.0, 0.0, 0)
-                else:
-                    raise ValueError(
-                        "pos_label=%r is not a valid label: %r"
-                        % (pos_label, present_labels)
-                    )
-            labels = [pos_label]
-        else:
-            raise ValueError(
-                "Target is %s but average='binary'. Please "
-                "choose another average setting." % y_type
-            )
-    elif pos_label not in (None, 1):
-        warnings.warn(
-            "Note that pos_label (set to %r) is ignored when "
-            "average != 'binary' (got %r). You may use "
-            "labels=[pos_label] to specify a single positive class."
-            % (pos_label, average),
-            UserWarning,
-        )
-
-    if labels is None:
-        labels = present_labels
-        n_labels = None
-    else:
-        n_labels = len(labels)
-        labels = np.hstack(
-            [labels, np.setdiff1d(present_labels, labels, assume_unique=True)]
-        )
-
-    # Calculate tp_sum, pred_sum, true_sum ###
-
-    if y_type.startswith("multilabel"):
-        raise ValueError("imblearn does not support multilabel")
-    elif average == "samples":
-        raise ValueError(
-            "Sample-based precision, recall, fscore is "
-            "not meaningful outside multilabel "
-            "classification. See the accuracy_score instead."
-        )
-    else:
-        le = LabelEncoder()
-        le.fit(labels)
-        y_true = le.transform(y_true)
-        y_pred = le.transform(y_pred)
-        sorted_labels = le.classes_
-
-        # labels are now from 0 to len(labels) - 1 -> use bincount
-        tp = y_true == y_pred
-        tp_bins = y_true[tp]
-        if sample_weight is not None:
-            tp_bins_weights = np.asarray(sample_weight)[tp]
-        else:
-            tp_bins_weights = None
-
-        if len(tp_bins):
-            tp_sum = np.bincount(
-                tp_bins, weights=tp_bins_weights, minlength=len(labels)
-            )
-        else:
-            # Pathological case
-            true_sum = pred_sum = tp_sum = np.zeros(len(labels))
-        if len(y_pred):
-            pred_sum = np.bincount(y_pred, weights=sample_weight, minlength=len(labels))
-        if len(y_true):
-            true_sum = np.bincount(y_true, weights=sample_weight, minlength=len(labels))
-
-        # Compute the true negative
-        tn_sum = y_true.size - (pred_sum + true_sum - tp_sum)
-
-        # Retain only selected labels
-        indices = np.searchsorted(sorted_labels, labels[:n_labels])
-        tp_sum = tp_sum[indices]
-        true_sum = true_sum[indices]
-        pred_sum = pred_sum[indices]
-        tn_sum = tn_sum[indices]
-
-    if average == "micro":
-        tp_sum = np.array([tp_sum.sum()])
-        pred_sum = np.array([pred_sum.sum()])
-        true_sum = np.array([true_sum.sum()])
-        tn_sum = np.array([tn_sum.sum()])
-
-    # Finally, we have all our sufficient statistics. Divide! #
-
-    with np.errstate(divide="ignore", invalid="ignore"):
-        # Divide, and on zero-division, set scores to 0 and warn:
-
-        # Oddly, we may get an "invalid" rather than a "divide" error
-        # here.
-        specificity = _prf_divide(
-            tn_sum,
-            tn_sum + pred_sum - tp_sum,
-            "specificity",
-            "predicted",
-            average,
-            warn_for,
-        )
-        sensitivity = _prf_divide(
-            tp_sum, true_sum, "sensitivity", "true", average, warn_for
-        )
-
-    # Average the results
-
-    if average == "weighted":
-        weights = true_sum
-        if weights.sum() == 0:
-            return 0, 0, None
-    elif average == "samples":
-        weights = sample_weight
-    else:
-        weights = None
-
-    if average is not None:
-        assert average != "binary" or len(specificity) == 1
-        specificity = np.average(specificity, weights=weights)
-        sensitivity = np.average(sensitivity, weights=weights)
-        true_sum = None  # return no support
-
-    return sensitivity, specificity, true_sum
-
-
-@validate_params(
-    {
-        "y_true": ["array-like"],
-        "y_pred": ["array-like"],
-        "labels": ["array-like", None],
-        "pos_label": [str, numbers.Integral, None],
-        "average": [
-            None,
-            StrOptions({"binary", "micro", "macro", "weighted", "samples"}),
-        ],
-        "sample_weight": ["array-like", None],
-    },
-    prefer_skip_nested_validation=True,
-)
-def sensitivity_score(
-    y_true,
-    y_pred,
-    *,
-    labels=None,
-    pos_label=1,
-    average="binary",
-    sample_weight=None,
-):
+@validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'labels': ['array-like', None], 'pos_label': [str, numbers.Integral, None], 'average': [None, StrOptions({'binary', 'micro', 'macro', 'weighted', 'samples'})], 'sample_weight': ['array-like', None]}, prefer_skip_nested_validation=True)
+def sensitivity_score(y_true, y_pred, *, labels=None, pos_label=1, average='binary', sample_weight=None):
     """Compute the sensitivity.
 
     The sensitivity is the ratio ``tp / (tp + fn)`` where ``tp`` is the number
@@ -379,8 +191,7 @@ def sensitivity_score(
 
     Returns
     -------
-    specificity : float (if `average is None`) or ndarray of \
-            shape (n_unique_labels,)
+    specificity : float (if `average is None`) or ndarray of             shape (n_unique_labels,)
         The specifcity metric.
 
     Examples
@@ -398,42 +209,10 @@ def sensitivity_score(
     >>> sensitivity_score(y_true, y_pred, average=None)
     array([1., 0., 0.])
     """
-    s, _, _ = sensitivity_specificity_support(
-        y_true,
-        y_pred,
-        labels=labels,
-        pos_label=pos_label,
-        average=average,
-        warn_for=("sensitivity",),
-        sample_weight=sample_weight,
-    )
+    pass
 
-    return s
-
-
-@validate_params(
-    {
-        "y_true": ["array-like"],
-        "y_pred": ["array-like"],
-        "labels": ["array-like", None],
-        "pos_label": [str, numbers.Integral, None],
-        "average": [
-            None,
-            StrOptions({"binary", "micro", "macro", "weighted", "samples"}),
-        ],
-        "sample_weight": ["array-like", None],
-    },
-    prefer_skip_nested_validation=True,
-)
-def specificity_score(
-    y_true,
-    y_pred,
-    *,
-    labels=None,
-    pos_label=1,
-    average="binary",
-    sample_weight=None,
-):
+@validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'labels': ['array-like', None], 'pos_label': [str, numbers.Integral, None], 'average': [None, StrOptions({'binary', 'micro', 'macro', 'weighted', 'samples'})], 'sample_weight': ['array-like', None]}, prefer_skip_nested_validation=True)
+def specificity_score(y_true, y_pred, *, labels=None, pos_label=1, average='binary', sample_weight=None):
     """Compute the specificity.
 
     The specificity is the ratio ``tn / (tn + fp)`` where ``tn`` is the number
@@ -495,8 +274,7 @@ def specificity_score(
 
     Returns
     -------
-    specificity : float (if `average is None`) or ndarray of \
-            shape (n_unique_labels,)
+    specificity : float (if `average is None`) or ndarray of             shape (n_unique_labels,)
         The specificity metric.
 
     Examples
@@ -514,46 +292,10 @@ def specificity_score(
     >>> specificity_score(y_true, y_pred, average=None)
     array([0.75, 0.5 , 0.75])
     """
-    _, s, _ = sensitivity_specificity_support(
-        y_true,
-        y_pred,
-        labels=labels,
-        pos_label=pos_label,
-        average=average,
-        warn_for=("specificity",),
-        sample_weight=sample_weight,
-    )
+    pass
 
-    return s
-
-
-@validate_params(
-    {
-        "y_true": ["array-like"],
-        "y_pred": ["array-like"],
-        "labels": ["array-like", None],
-        "pos_label": [str, numbers.Integral, None],
-        "average": [
-            None,
-            StrOptions(
-                {"binary", "micro", "macro", "weighted", "samples", "multiclass"}
-            ),
-        ],
-        "sample_weight": ["array-like", None],
-        "correction": [Interval(numbers.Real, 0, None, closed="left")],
-    },
-    prefer_skip_nested_validation=True,
-)
-def geometric_mean_score(
-    y_true,
-    y_pred,
-    *,
-    labels=None,
-    pos_label=1,
-    average="multiclass",
-    sample_weight=None,
-    correction=0.0,
-):
+@validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'labels': ['array-like', None], 'pos_label': [str, numbers.Integral, None], 'average': [None, StrOptions({'binary', 'micro', 'macro', 'weighted', 'samples', 'multiclass'})], 'sample_weight': ['array-like', None], 'correction': [Interval(numbers.Real, 0, None, closed='left')]}, prefer_skip_nested_validation=True)
+def geometric_mean_score(y_true, y_pred, *, labels=None, pos_label=1, average='multiclass', sample_weight=None, correction=0.0):
     """Compute the geometric mean.
 
     The geometric mean (G-mean) is the root of the product of class-wise
@@ -667,76 +409,9 @@ def geometric_mean_score(
     >>> geometric_mean_score(y_true, y_pred, average=None)
     array([0.866...,  0.       ,  0.       ])
     """
-    if average is None or average != "multiclass":
-        sen, spe, _ = sensitivity_specificity_support(
-            y_true,
-            y_pred,
-            labels=labels,
-            pos_label=pos_label,
-            average=average,
-            warn_for=("specificity", "specificity"),
-            sample_weight=sample_weight,
-        )
+    pass
 
-        return np.sqrt(sen * spe)
-    else:
-        present_labels = unique_labels(y_true, y_pred)
-
-        if labels is None:
-            labels = present_labels
-            n_labels = None
-        else:
-            n_labels = len(labels)
-            labels = np.hstack(
-                [labels, np.setdiff1d(present_labels, labels, assume_unique=True)]
-            )
-
-        le = LabelEncoder()
-        le.fit(labels)
-        y_true = le.transform(y_true)
-        y_pred = le.transform(y_pred)
-        sorted_labels = le.classes_
-
-        # labels are now from 0 to len(labels) - 1 -> use bincount
-        tp = y_true == y_pred
-        tp_bins = y_true[tp]
-
-        if sample_weight is not None:
-            tp_bins_weights = np.asarray(sample_weight)[tp]
-        else:
-            tp_bins_weights = None
-
-        if len(tp_bins):
-            tp_sum = np.bincount(
-                tp_bins, weights=tp_bins_weights, minlength=len(labels)
-            )
-        else:
-            # Pathological case
-            true_sum = tp_sum = np.zeros(len(labels))
-        if len(y_true):
-            true_sum = np.bincount(y_true, weights=sample_weight, minlength=len(labels))
-
-        # Retain only selected labels
-        indices = np.searchsorted(sorted_labels, labels[:n_labels])
-        tp_sum = tp_sum[indices]
-        true_sum = true_sum[indices]
-
-        with np.errstate(divide="ignore", invalid="ignore"):
-            recall = _prf_divide(tp_sum, true_sum, "recall", "true", None, "recall")
-        recall[recall == 0] = correction
-
-        with np.errstate(divide="ignore", invalid="ignore"):
-            gmean = sp.stats.gmean(recall)
-        # old version of scipy return MaskedConstant instead of 0.0
-        if isinstance(gmean, np.ma.core.MaskedConstant):
-            return 0.0
-        return gmean
-
-
-@validate_params(
-    {"alpha": [numbers.Real], "squared": ["boolean"]},
-    prefer_skip_nested_validation=True,
-)
+@validate_params({'alpha': [numbers.Real], 'squared': ['boolean']}, prefer_skip_nested_validation=True)
 def make_index_balanced_accuracy(*, alpha=0.1, squared=True):
     """Balance any scoring function using the index balanced accuracy.
 
@@ -786,91 +461,10 @@ def make_index_balanced_accuracy(*, alpha=0.1, squared=True):
     >>> print(gmean(y_true, y_pred, average=None))
     [0.44...  0.44...]
     """
+    pass
 
-    def decorate(scoring_func):
-        @functools.wraps(scoring_func)
-        def compute_score(*args, **kwargs):
-            signature_scoring_func = signature(scoring_func)
-            params_scoring_func = set(signature_scoring_func.parameters.keys())
-
-            # check that the scoring function does not need a score
-            # and only a prediction
-            prohibitied_y_pred = set(["y_score", "y_prob", "y2"])
-            if prohibitied_y_pred.intersection(params_scoring_func):
-                raise AttributeError(
-                    f"The function {scoring_func.__name__} has an unsupported"
-                    f" attribute. Metric with`y_pred` are the"
-                    f" only supported metrics is the only"
-                    f" supported."
-                )
-
-            args_scoring_func = signature_scoring_func.bind(*args, **kwargs)
-            args_scoring_func.apply_defaults()
-            _score = scoring_func(*args_scoring_func.args, **args_scoring_func.kwargs)
-            if squared:
-                _score = np.power(_score, 2)
-
-            signature_sens_spec = signature(sensitivity_specificity_support)
-            params_sens_spec = set(signature_sens_spec.parameters.keys())
-            common_params = params_sens_spec.intersection(
-                set(args_scoring_func.arguments.keys())
-            )
-
-            args_sens_spec = {k: args_scoring_func.arguments[k] for k in common_params}
-
-            if scoring_func.__name__ == "geometric_mean_score":
-                if "average" in args_sens_spec:
-                    if args_sens_spec["average"] == "multiclass":
-                        args_sens_spec["average"] = "macro"
-            elif (
-                scoring_func.__name__ == "accuracy_score"
-                or scoring_func.__name__ == "jaccard_score"
-            ):
-                # We do not support multilabel so the only average supported
-                # is binary
-                args_sens_spec["average"] = "binary"
-
-            sensitivity, specificity, _ = sensitivity_specificity_support(
-                **args_sens_spec
-            )
-
-            dominance = sensitivity - specificity
-            return (1.0 + alpha * dominance) * _score
-
-        return compute_score
-
-    return decorate
-
-
-@validate_params(
-    {
-        "y_true": ["array-like"],
-        "y_pred": ["array-like"],
-        "labels": ["array-like", None],
-        "target_names": ["array-like", None],
-        "sample_weight": ["array-like", None],
-        "digits": [Interval(numbers.Integral, 0, None, closed="left")],
-        "alpha": [numbers.Real],
-        "output_dict": ["boolean"],
-        "zero_division": [
-            StrOptions({"warn"}),
-            Interval(numbers.Integral, 0, 1, closed="both"),
-        ],
-    },
-    prefer_skip_nested_validation=True,
-)
-def classification_report_imbalanced(
-    y_true,
-    y_pred,
-    *,
-    labels=None,
-    target_names=None,
-    sample_weight=None,
-    digits=2,
-    alpha=0.1,
-    output_dict=False,
-    zero_division="warn",
-):
+@validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'labels': ['array-like', None], 'target_names': ['array-like', None], 'sample_weight': ['array-like', None], 'digits': [Interval(numbers.Integral, 0, None, closed='left')], 'alpha': [numbers.Real], 'output_dict': ['boolean'], 'zero_division': [StrOptions({'warn'}), Interval(numbers.Integral, 0, 1, closed='both')]}, prefer_skip_nested_validation=True)
+def classification_report_imbalanced(y_true, y_pred, *, labels=None, target_names=None, sample_weight=None, digits=2, alpha=0.1, output_dict=False, zero_division='warn'):
     """Build a classification report based on metrics used with imbalanced dataset.
 
     Specific metrics have been proposed to evaluate the classification
@@ -940,140 +534,19 @@ def classification_report_imbalanced(
     >>> y_true = [0, 1, 2, 2, 2]
     >>> y_pred = [0, 0, 2, 2, 1]
     >>> target_names = ['class 0', 'class 1', 'class 2']
-    >>> print(classification_report_imbalanced(y_true, y_pred, \
-    target_names=target_names))
-                       pre       rec       spe        f1       geo       iba\
-       sup
+    >>> print(classification_report_imbalanced(y_true, y_pred,     target_names=target_names))
+                       pre       rec       spe        f1       geo       iba       sup
     <BLANKLINE>
-        class 0       0.50      1.00      0.75      0.67      0.87      0.77\
-         1
-        class 1       0.00      0.00      0.75      0.00      0.00      0.00\
-         1
-        class 2       1.00      0.67      1.00      0.80      0.82      0.64\
-         3
+        class 0       0.50      1.00      0.75      0.67      0.87      0.77         1
+        class 1       0.00      0.00      0.75      0.00      0.00      0.00         1
+        class 2       1.00      0.67      1.00      0.80      0.82      0.64         3
     <BLANKLINE>
-    avg / total       0.70      0.60      0.90      0.61      0.66      0.54\
-         5
+    avg / total       0.70      0.60      0.90      0.61      0.66      0.54         5
     <BLANKLINE>
     """
+    pass
 
-    if labels is None:
-        labels = unique_labels(y_true, y_pred)
-    else:
-        labels = np.asarray(labels)
-
-    last_line_heading = "avg / total"
-
-    if target_names is None:
-        target_names = [f"{label}" for label in labels]
-    name_width = max(len(cn) for cn in target_names)
-    width = max(name_width, len(last_line_heading), digits)
-
-    headers = ["pre", "rec", "spe", "f1", "geo", "iba", "sup"]
-    fmt = "%% %ds" % width  # first column: class name
-    fmt += "  "
-    fmt += " ".join(["% 9s" for _ in headers])
-    fmt += "\n"
-
-    headers = [""] + headers
-    report = fmt % tuple(headers)
-    report += "\n"
-
-    # Compute the different metrics
-    # Precision/recall/f1
-    precision, recall, f1, support = precision_recall_fscore_support(
-        y_true,
-        y_pred,
-        labels=labels,
-        average=None,
-        sample_weight=sample_weight,
-        zero_division=zero_division,
-    )
-    # Specificity
-    specificity = specificity_score(
-        y_true,
-        y_pred,
-        labels=labels,
-        average=None,
-        sample_weight=sample_weight,
-    )
-    # Geometric mean
-    geo_mean = geometric_mean_score(
-        y_true,
-        y_pred,
-        labels=labels,
-        average=None,
-        sample_weight=sample_weight,
-    )
-    # Index balanced accuracy
-    iba_gmean = make_index_balanced_accuracy(alpha=alpha, squared=True)(
-        geometric_mean_score
-    )
-    iba = iba_gmean(
-        y_true,
-        y_pred,
-        labels=labels,
-        average=None,
-        sample_weight=sample_weight,
-    )
-
-    report_dict = {}
-    for i, label in enumerate(labels):
-        report_dict_label = {}
-        values = [target_names[i]]
-        for score_name, score_value in zip(
-            headers[1:-1],
-            [
-                precision[i],
-                recall[i],
-                specificity[i],
-                f1[i],
-                geo_mean[i],
-                iba[i],
-            ],
-        ):
-            values += ["{0:0.{1}f}".format(score_value, digits)]
-            report_dict_label[score_name] = score_value
-        values += [f"{support[i]}"]
-        report_dict_label[headers[-1]] = support[i]
-        report += fmt % tuple(values)
-
-        report_dict[target_names[i]] = report_dict_label
-
-    report += "\n"
-
-    # compute averages
-    values = [last_line_heading]
-    for score_name, score_value in zip(
-        headers[1:-1],
-        [
-            np.average(precision, weights=support),
-            np.average(recall, weights=support),
-            np.average(specificity, weights=support),
-            np.average(f1, weights=support),
-            np.average(geo_mean, weights=support),
-            np.average(iba, weights=support),
-        ],
-    ):
-        values += ["{0:0.{1}f}".format(score_value, digits)]
-        report_dict[f"avg_{score_name}"] = score_value
-    values += [f"{np.sum(support)}"]
-    report += fmt % tuple(values)
-    report_dict["total_support"] = np.sum(support)
-
-    if output_dict:
-        return report_dict
-    return report
-
-
-@validate_params(
-    {
-        "y_true": ["array-like"],
-        "y_pred": ["array-like"],
-        "sample_weight": ["array-like", None],
-    },
-    prefer_skip_nested_validation=True,
-)
+@validate_params({'y_true': ['array-like'], 'y_pred': ['array-like'], 'sample_weight': ['array-like', None]}, prefer_skip_nested_validation=True)
 def macro_averaged_mean_absolute_error(y_true, y_pred, *, sample_weight=None):
     """Compute Macro-Averaged MAE for imbalanced ordinal classification.
 
@@ -1118,23 +591,4 @@ def macro_averaged_mean_absolute_error(y_true, y_pred, *, sample_weight=None):
     >>> macro_averaged_mean_absolute_error(y_true_imbalanced, y_pred)
     0.16...
     """
-    _, y_true, y_pred = _check_targets(y_true, y_pred)
-    if sample_weight is not None:
-        sample_weight = column_or_1d(sample_weight)
-    else:
-        sample_weight = np.ones(y_true.shape)
-    check_consistent_length(y_true, y_pred, sample_weight)
-    labels = unique_labels(y_true, y_pred)
-    mae = []
-    for possible_class in labels:
-        indices = np.flatnonzero(y_true == possible_class)
-
-        mae.append(
-            mean_absolute_error(
-                y_true[indices],
-                y_pred[indices],
-                sample_weight=sample_weight[indices],
-            )
-        )
-
-    return np.sum(mae) / len(mae)
+    pass

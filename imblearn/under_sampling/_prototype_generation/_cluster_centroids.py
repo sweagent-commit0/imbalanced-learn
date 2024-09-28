@@ -1,30 +1,18 @@
 """Class to perform under-sampling by generating centroids based on
 clustering."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Fernando Nogueira
-#          Christos Aridas
-# License: MIT
-
 import numpy as np
 from scipy import sparse
 from sklearn.base import clone
 from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import _safe_indexing
-
 from ...utils import Substitution
 from ...utils._docstring import _random_state_docstring
 from ...utils._param_validation import HasMethods, StrOptions
 from ..base import BaseUnderSampler
+VOTING_KIND = ('auto', 'hard', 'soft')
 
-VOTING_KIND = ("auto", "hard", "soft")
-
-
-@Substitution(
-    sampling_strategy=BaseUnderSampler._sampling_strategy_docstring,
-    random_state=_random_state_docstring,
-)
+@Substitution(sampling_strategy=BaseUnderSampler._sampling_strategy_docstring, random_state=_random_state_docstring)
 class ClusterCentroids(BaseUnderSampler):
     """Undersample by generating centroids based on clustering methods.
 
@@ -113,22 +101,9 @@ class ClusterCentroids(BaseUnderSampler):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{...}})
     """
+    _parameter_constraints: dict = {**BaseUnderSampler._parameter_constraints, 'estimator': [HasMethods(['fit', 'predict']), None], 'voting': [StrOptions({'auto', 'hard', 'soft'})], 'random_state': ['random_state']}
 
-    _parameter_constraints: dict = {
-        **BaseUnderSampler._parameter_constraints,
-        "estimator": [HasMethods(["fit", "predict"]), None],
-        "voting": [StrOptions({"auto", "hard", "soft"})],
-        "random_state": ["random_state"],
-    }
-
-    def __init__(
-        self,
-        *,
-        sampling_strategy="auto",
-        random_state=None,
-        estimator=None,
-        voting="auto",
-    ):
+    def __init__(self, *, sampling_strategy='auto', random_state=None, estimator=None, voting='auto'):
         super().__init__(sampling_strategy=sampling_strategy)
         self.random_state = random_state
         self.estimator = estimator
@@ -136,70 +111,4 @@ class ClusterCentroids(BaseUnderSampler):
 
     def _validate_estimator(self):
         """Private function to create the KMeans estimator"""
-        if self.estimator is None:
-            self.estimator_ = KMeans(random_state=self.random_state)
-        else:
-            self.estimator_ = clone(self.estimator)
-            if "n_clusters" not in self.estimator_.get_params():
-                raise ValueError(
-                    "`estimator` should be a clustering estimator exposing a parameter"
-                    " `n_clusters` and a fitted parameter `cluster_centers_`."
-                )
-
-    def _generate_sample(self, X, y, centroids, target_class):
-        if self.voting_ == "hard":
-            nearest_neighbors = NearestNeighbors(n_neighbors=1)
-            nearest_neighbors.fit(X, y)
-            indices = nearest_neighbors.kneighbors(centroids, return_distance=False)
-            X_new = _safe_indexing(X, np.squeeze(indices))
-        else:
-            if sparse.issparse(X):
-                X_new = sparse.csr_matrix(centroids, dtype=X.dtype)
-            else:
-                X_new = centroids
-        y_new = np.array([target_class] * centroids.shape[0], dtype=y.dtype)
-
-        return X_new, y_new
-
-    def _fit_resample(self, X, y):
-        self._validate_estimator()
-
-        if self.voting == "auto":
-            self.voting_ = "hard" if sparse.issparse(X) else "soft"
-        else:
-            self.voting_ = self.voting
-
-        X_resampled, y_resampled = [], []
-        for target_class in np.unique(y):
-            target_class_indices = np.flatnonzero(y == target_class)
-            if target_class in self.sampling_strategy_.keys():
-                n_samples = self.sampling_strategy_[target_class]
-                self.estimator_.set_params(**{"n_clusters": n_samples})
-                self.estimator_.fit(_safe_indexing(X, target_class_indices))
-                if not hasattr(self.estimator_, "cluster_centers_"):
-                    raise RuntimeError(
-                        "`estimator` should be a clustering estimator exposing a "
-                        "fitted parameter `cluster_centers_`."
-                    )
-                X_new, y_new = self._generate_sample(
-                    _safe_indexing(X, target_class_indices),
-                    _safe_indexing(y, target_class_indices),
-                    self.estimator_.cluster_centers_,
-                    target_class,
-                )
-                X_resampled.append(X_new)
-                y_resampled.append(y_new)
-            else:
-                X_resampled.append(_safe_indexing(X, target_class_indices))
-                y_resampled.append(_safe_indexing(y, target_class_indices))
-
-        if sparse.issparse(X):
-            X_resampled = sparse.vstack(X_resampled)
-        else:
-            X_resampled = np.vstack(X_resampled)
-        y_resampled = np.hstack(y_resampled)
-
-        return X_resampled, np.array(y_resampled, dtype=y.dtype)
-
-    def _more_tags(self):
-        return {"sample_indices": False}
+        pass

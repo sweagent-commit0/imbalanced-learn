@@ -1,31 +1,12 @@
 """Transform a dataset into an imbalanced dataset."""
-
-# Authors: Dayvid Oliveira
-#          Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Christos Aridas
-# License: MIT
-
 from collections import Counter
 from collections.abc import Mapping
-
 from ..under_sampling import RandomUnderSampler
 from ..utils import check_sampling_strategy
 from ..utils._param_validation import validate_params
 
-
-@validate_params(
-    {
-        "X": ["array-like"],
-        "y": ["array-like"],
-        "sampling_strategy": [Mapping, callable, None],
-        "random_state": ["random_state"],
-        "verbose": ["boolean"],
-    },
-    prefer_skip_nested_validation=True,
-)
-def make_imbalance(
-    X, y, *, sampling_strategy=None, random_state=None, verbose=False, **kwargs
-):
+@validate_params({'X': ['array-like'], 'y': ['array-like'], 'sampling_strategy': [Mapping, callable, None], 'random_state': ['random_state'], 'verbose': ['boolean']}, prefer_skip_nested_validation=True)
+def make_imbalance(X, y, *, sampling_strategy=None, random_state=None, verbose=False, **kwargs):
     """Turn a dataset into an imbalanced dataset with a specific sampling strategy.
 
     A simple toy dataset to visualize clustering and classification
@@ -96,22 +77,4 @@ def make_imbalance(
     >>> print(f'Distribution after imbalancing: {Counter(y_res)}')
     Distribution after imbalancing: Counter({2: 30, 1: 20, 0: 10})
     """
-    target_stats = Counter(y)
-    # restrict ratio to be a dict or a callable
-    if isinstance(sampling_strategy, Mapping) or callable(sampling_strategy):
-        sampling_strategy_ = check_sampling_strategy(
-            sampling_strategy, y, "under-sampling", **kwargs
-        )
-
-    if verbose:
-        print(f"The original target distribution in the dataset is: {target_stats}")
-    rus = RandomUnderSampler(
-        sampling_strategy=sampling_strategy_,
-        replacement=False,
-        random_state=random_state,
-    )
-    X_resampled, y_resampled = rus.fit_resample(X, y)
-    if verbose:
-        print(f"Make the dataset imbalanced: {Counter(y_resampled)}")
-
-    return X_resampled, y_resampled
+    pass

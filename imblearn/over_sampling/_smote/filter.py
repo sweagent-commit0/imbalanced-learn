@@ -1,32 +1,18 @@
-﻿"""SMOTE variant applying some filtering before the generation process."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Fernando Nogueira
-#          Christos Aridas
-#          Dzianis Dudnik
-# License: MIT
-
+"""SMOTE variant applying some filtering before the generation process."""
 import numbers
 import warnings
-
 import numpy as np
 from scipy import sparse
 from sklearn.base import clone
 from sklearn.svm import SVC
 from sklearn.utils import _safe_indexing, check_random_state
-
 from ...utils import Substitution, check_neighbors_object
 from ...utils._docstring import _n_jobs_docstring, _random_state_docstring
 from ...utils._param_validation import HasMethods, Interval, StrOptions
 from ..base import BaseOverSampler
 from .base import BaseSMOTE
 
-
-@Substitution(
-    sampling_strategy=BaseOverSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-    random_state=_random_state_docstring,
-)
+@Substitution(sampling_strategy=BaseOverSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring, random_state=_random_state_docstring)
 class BorderlineSMOTE(BaseSMOTE):
     """Over-sampling using Borderline SMOTE.
 
@@ -156,104 +142,14 @@ class BorderlineSMOTE(BaseSMOTE):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{0: 900, 1: 900}})
     """
+    _parameter_constraints: dict = {**BaseSMOTE._parameter_constraints, 'm_neighbors': [Interval(numbers.Integral, 1, None, closed='left'), HasMethods(['kneighbors', 'kneighbors_graph'])], 'kind': [StrOptions({'borderline-1', 'borderline-2'})]}
 
-    _parameter_constraints: dict = {
-        **BaseSMOTE._parameter_constraints,
-        "m_neighbors": [
-            Interval(numbers.Integral, 1, None, closed="left"),
-            HasMethods(["kneighbors", "kneighbors_graph"]),
-        ],
-        "kind": [StrOptions({"borderline-1", "borderline-2"})],
-    }
-
-    def __init__(
-        self,
-        *,
-        sampling_strategy="auto",
-        random_state=None,
-        k_neighbors=5,
-        n_jobs=None,
-        m_neighbors=10,
-        kind="borderline-1",
-    ):
-        super().__init__(
-            sampling_strategy=sampling_strategy,
-            random_state=random_state,
-            k_neighbors=k_neighbors,
-            n_jobs=n_jobs,
-        )
+    def __init__(self, *, sampling_strategy='auto', random_state=None, k_neighbors=5, n_jobs=None, m_neighbors=10, kind='borderline-1'):
+        super().__init__(sampling_strategy=sampling_strategy, random_state=random_state, k_neighbors=k_neighbors, n_jobs=n_jobs)
         self.m_neighbors = m_neighbors
         self.kind = kind
 
-    def _validate_estimator(self):
-        super()._validate_estimator()
-        self.nn_m_ = check_neighbors_object(
-            "m_neighbors", self.m_neighbors, additional_neighbor=1
-        )
-
-    def _fit_resample(self, X, y):
-        # FIXME: to be removed in 0.12
-        if self.n_jobs is not None:
-            warnings.warn(
-                "The parameter `n_jobs` has been deprecated in 0.10 and will be "
-                "removed in 0.12. You can pass an nearest neighbors estimator where "
-                "`n_jobs` is already set instead.",
-                FutureWarning,
-            )
-
-        self._validate_estimator()
-
-        X_resampled = X.copy()
-        y_resampled = y.copy()
-
-        self.in_danger_indices = {}
-        for class_sample, n_samples in self.sampling_strategy_.items():
-            if n_samples == 0:
-                continue
-            target_class_indices = np.flatnonzero(y == class_sample)
-            X_class = _safe_indexing(X, target_class_indices)
-
-            self.nn_m_.fit(X)
-            mask_danger = self._in_danger_noise(
-                self.nn_m_, X_class, class_sample, y, kind="danger"
-            )
-            if not any(mask_danger):
-                continue
-            X_danger = _safe_indexing(X_class, mask_danger)
-            self.in_danger_indices[class_sample] = target_class_indices[mask_danger]
-
-            if self.kind == "borderline-1":
-                X_to_sample_from = X_class  # consider the positive class only
-                y_to_check_neighbors = None
-            else:  # self.kind == "borderline-2"
-                X_to_sample_from = X  # consider the whole dataset
-                y_to_check_neighbors = y
-
-            self.nn_k_.fit(X_to_sample_from)
-            nns = self.nn_k_.kneighbors(X_danger, return_distance=False)[:, 1:]
-            X_new, y_new = self._make_samples(
-                X_danger,
-                y.dtype,
-                class_sample,
-                X_to_sample_from,
-                nns,
-                n_samples,
-                y=y_to_check_neighbors,
-            )
-            if sparse.issparse(X_new):
-                X_resampled = sparse.vstack([X_resampled, X_new])
-            else:
-                X_resampled = np.vstack((X_resampled, X_new))
-            y_resampled = np.hstack((y_resampled, y_new))
-
-        return X_resampled, y_resampled
-
-
-@Substitution(
-    sampling_strategy=BaseOverSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-    random_state=_random_state_docstring,
-)
+@Substitution(sampling_strategy=BaseOverSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring, random_state=_random_state_docstring)
 class SVMSMOTE(BaseSMOTE):
     """Over-sampling using SVM-SMOTE.
 
@@ -388,151 +284,10 @@ class SVMSMOTE(BaseSMOTE):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{0: 900, 1: 900}})
     """
+    _parameter_constraints: dict = {**BaseSMOTE._parameter_constraints, 'm_neighbors': [Interval(numbers.Integral, 1, None, closed='left'), HasMethods(['kneighbors', 'kneighbors_graph'])], 'svm_estimator': [HasMethods(['fit', 'predict']), None], 'out_step': [Interval(numbers.Real, 0, 1, closed='both')]}
 
-    _parameter_constraints: dict = {
-        **BaseSMOTE._parameter_constraints,
-        "m_neighbors": [
-            Interval(numbers.Integral, 1, None, closed="left"),
-            HasMethods(["kneighbors", "kneighbors_graph"]),
-        ],
-        "svm_estimator": [HasMethods(["fit", "predict"]), None],
-        "out_step": [Interval(numbers.Real, 0, 1, closed="both")],
-    }
-
-    def __init__(
-        self,
-        *,
-        sampling_strategy="auto",
-        random_state=None,
-        k_neighbors=5,
-        n_jobs=None,
-        m_neighbors=10,
-        svm_estimator=None,
-        out_step=0.5,
-    ):
-        super().__init__(
-            sampling_strategy=sampling_strategy,
-            random_state=random_state,
-            k_neighbors=k_neighbors,
-            n_jobs=n_jobs,
-        )
+    def __init__(self, *, sampling_strategy='auto', random_state=None, k_neighbors=5, n_jobs=None, m_neighbors=10, svm_estimator=None, out_step=0.5):
+        super().__init__(sampling_strategy=sampling_strategy, random_state=random_state, k_neighbors=k_neighbors, n_jobs=n_jobs)
         self.m_neighbors = m_neighbors
         self.svm_estimator = svm_estimator
         self.out_step = out_step
-
-    def _validate_estimator(self):
-        super()._validate_estimator()
-        self.nn_m_ = check_neighbors_object(
-            "m_neighbors", self.m_neighbors, additional_neighbor=1
-        )
-
-        if self.svm_estimator is None:
-            self.svm_estimator_ = SVC(gamma="scale", random_state=self.random_state)
-        else:
-            self.svm_estimator_ = clone(self.svm_estimator)
-
-    def _fit_resample(self, X, y):
-        # FIXME: to be removed in 0.12
-        if self.n_jobs is not None:
-            warnings.warn(
-                "The parameter `n_jobs` has been deprecated in 0.10 and will be "
-                "removed in 0.12. You can pass an nearest neighbors estimator where "
-                "`n_jobs` is already set instead.",
-                FutureWarning,
-            )
-
-        self._validate_estimator()
-        random_state = check_random_state(self.random_state)
-        X_resampled = X.copy()
-        y_resampled = y.copy()
-
-        for class_sample, n_samples in self.sampling_strategy_.items():
-            if n_samples == 0:
-                continue
-            target_class_indices = np.flatnonzero(y == class_sample)
-            X_class = _safe_indexing(X, target_class_indices)
-
-            self.svm_estimator_.fit(X, y)
-            if not hasattr(self.svm_estimator_, "support_"):
-                raise RuntimeError(
-                    "`svm_estimator` is required to exposed a `support_` fitted "
-                    "attribute. Such estimator belongs to the familly of Support "
-                    "Vector Machine."
-                )
-            support_index = self.svm_estimator_.support_[
-                y[self.svm_estimator_.support_] == class_sample
-            ]
-            support_vector = _safe_indexing(X, support_index)
-
-            self.nn_m_.fit(X)
-            noise_bool = self._in_danger_noise(
-                self.nn_m_, support_vector, class_sample, y, kind="noise"
-            )
-            support_vector = _safe_indexing(
-                support_vector, np.flatnonzero(np.logical_not(noise_bool))
-            )
-            if support_vector.shape[0] == 0:
-                raise ValueError(
-                    "All support vectors are considered as noise. SVM-SMOTE is not "
-                    "adapted to your dataset. Try another SMOTE variant."
-                )
-            danger_bool = self._in_danger_noise(
-                self.nn_m_, support_vector, class_sample, y, kind="danger"
-            )
-            safety_bool = np.logical_not(danger_bool)
-
-            self.nn_k_.fit(X_class)
-            fractions = random_state.beta(10, 10)
-            n_generated_samples = int(fractions * (n_samples + 1))
-            if np.count_nonzero(danger_bool) > 0:
-                nns = self.nn_k_.kneighbors(
-                    _safe_indexing(support_vector, np.flatnonzero(danger_bool)),
-                    return_distance=False,
-                )[:, 1:]
-
-                X_new_1, y_new_1 = self._make_samples(
-                    _safe_indexing(support_vector, np.flatnonzero(danger_bool)),
-                    y.dtype,
-                    class_sample,
-                    X_class,
-                    nns,
-                    n_generated_samples,
-                    step_size=1.0,
-                )
-
-            if np.count_nonzero(safety_bool) > 0:
-                nns = self.nn_k_.kneighbors(
-                    _safe_indexing(support_vector, np.flatnonzero(safety_bool)),
-                    return_distance=False,
-                )[:, 1:]
-
-                X_new_2, y_new_2 = self._make_samples(
-                    _safe_indexing(support_vector, np.flatnonzero(safety_bool)),
-                    y.dtype,
-                    class_sample,
-                    X_class,
-                    nns,
-                    n_samples - n_generated_samples,
-                    step_size=-self.out_step,
-                )
-
-            if np.count_nonzero(danger_bool) > 0 and np.count_nonzero(safety_bool) > 0:
-                if sparse.issparse(X_resampled):
-                    X_resampled = sparse.vstack([X_resampled, X_new_1, X_new_2])
-                else:
-                    X_resampled = np.vstack((X_resampled, X_new_1, X_new_2))
-                y_resampled = np.concatenate((y_resampled, y_new_1, y_new_2), axis=0)
-            elif np.count_nonzero(danger_bool) == 0:
-                if sparse.issparse(X_resampled):
-                    X_resampled = sparse.vstack([X_resampled, X_new_2])
-                else:
-                    X_resampled = np.vstack((X_resampled, X_new_2))
-                y_resampled = np.concatenate((y_resampled, y_new_2), axis=0)
-            elif np.count_nonzero(safety_bool) == 0:
-                if sparse.issparse(X_resampled):
-                    X_resampled = sparse.vstack([X_resampled, X_new_1])
-                else:
-                    X_resampled = np.vstack((X_resampled, X_new_1))
-                y_resampled = np.concatenate((y_resampled, y_new_1), axis=0)
-
-        return X_resampled, y_resampled

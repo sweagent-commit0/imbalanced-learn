@@ -1,15 +1,8 @@
 """Class to perform over-sampling using SMOTE and cleaning using Tomek
 links."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Christos Aridas
-# License: MIT
-
 import numbers
-
 from sklearn.base import clone
 from sklearn.utils import check_X_y
-
 from ..base import BaseSampler
 from ..over_sampling import SMOTE
 from ..over_sampling.base import BaseOverSampler
@@ -17,12 +10,7 @@ from ..under_sampling import TomekLinks
 from ..utils import Substitution, check_target_type
 from ..utils._docstring import _n_jobs_docstring, _random_state_docstring
 
-
-@Substitution(
-    sampling_strategy=BaseOverSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-    random_state=_random_state_docstring,
-)
+@Substitution(sampling_strategy=BaseOverSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring, random_state=_random_state_docstring)
 class SMOTETomek(BaseSampler):
     """Over-sampling using SMOTE and cleaning using Tomek links.
 
@@ -105,25 +93,10 @@ class SMOTETomek(BaseSampler):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{0: 900, 1: 900}})
     """
+    _sampling_type = 'over-sampling'
+    _parameter_constraints: dict = {**BaseOverSampler._parameter_constraints, 'smote': [SMOTE, None], 'tomek': [TomekLinks, None], 'n_jobs': [numbers.Integral, None]}
 
-    _sampling_type = "over-sampling"
-
-    _parameter_constraints: dict = {
-        **BaseOverSampler._parameter_constraints,
-        "smote": [SMOTE, None],
-        "tomek": [TomekLinks, None],
-        "n_jobs": [numbers.Integral, None],
-    }
-
-    def __init__(
-        self,
-        *,
-        sampling_strategy="auto",
-        random_state=None,
-        smote=None,
-        tomek=None,
-        n_jobs=None,
-    ):
+    def __init__(self, *, sampling_strategy='auto', random_state=None, smote=None, tomek=None, n_jobs=None):
         super().__init__()
         self.sampling_strategy = sampling_strategy
         self.random_state = random_state
@@ -132,27 +105,5 @@ class SMOTETomek(BaseSampler):
         self.n_jobs = n_jobs
 
     def _validate_estimator(self):
-        "Private function to validate SMOTE and ENN objects"
-
-        if self.smote is not None:
-            self.smote_ = clone(self.smote)
-        else:
-            self.smote_ = SMOTE(
-                sampling_strategy=self.sampling_strategy,
-                random_state=self.random_state,
-                n_jobs=self.n_jobs,
-            )
-
-        if self.tomek is not None:
-            self.tomek_ = clone(self.tomek)
-        else:
-            self.tomek_ = TomekLinks(sampling_strategy="all", n_jobs=self.n_jobs)
-
-    def _fit_resample(self, X, y):
-        self._validate_estimator()
-        y = check_target_type(y)
-        X, y = check_X_y(X, y, accept_sparse=["csr", "csc"])
-        self.sampling_strategy_ = self.sampling_strategy
-
-        X_res, y_res = self.smote_.fit_resample(X, y)
-        return self.tomek_.fit_resample(X_res, y_res)
+        """Private function to validate SMOTE and ENN objects"""
+        pass

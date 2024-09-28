@@ -1,25 +1,13 @@
 """Class to perform under-sampling by removing Tomek's links."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Fernando Nogueira
-#          Christos Aridas
-# License: MIT
-
 import numbers
-
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import _safe_indexing
-
 from ...utils import Substitution
 from ...utils._docstring import _n_jobs_docstring
 from ..base import BaseCleaningSampler
 
-
-@Substitution(
-    sampling_strategy=BaseCleaningSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-)
+@Substitution(sampling_strategy=BaseCleaningSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring)
 class TomekLinks(BaseCleaningSampler):
     """Under-sampling by removing Tomek's links.
 
@@ -89,13 +77,9 @@ class TomekLinks(BaseCleaningSampler):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{1: 897, 0: 100}})
     """
+    _parameter_constraints: dict = {**BaseCleaningSampler._parameter_constraints, 'n_jobs': [numbers.Integral, None]}
 
-    _parameter_constraints: dict = {
-        **BaseCleaningSampler._parameter_constraints,
-        "n_jobs": [numbers.Integral, None],
-    }
-
-    def __init__(self, *, sampling_strategy="auto", n_jobs=None):
+    def __init__(self, *, sampling_strategy='auto', n_jobs=None):
         super().__init__(sampling_strategy=sampling_strategy)
         self.n_jobs = n_jobs
 
@@ -125,36 +109,4 @@ class TomekLinks(BaseCleaningSampler):
             Boolean vector on len( # samples ), with True for majority samples
             that are Tomek links.
         """
-        links = np.zeros(len(y), dtype=bool)
-
-        # find which class to not consider
-        class_excluded = [c for c in np.unique(y) if c not in class_type]
-
-        # there is a Tomek link between two samples if they are both nearest
-        # neighbors of each others.
-        for index_sample, target_sample in enumerate(y):
-            if target_sample in class_excluded:
-                continue
-
-            if y[nn_index[index_sample]] != target_sample:
-                if nn_index[nn_index[index_sample]] == index_sample:
-                    links[index_sample] = True
-
-        return links
-
-    def _fit_resample(self, X, y):
-        # Find the nearest neighbour of every point
-        nn = NearestNeighbors(n_neighbors=2, n_jobs=self.n_jobs)
-        nn.fit(X)
-        nns = nn.kneighbors(X, return_distance=False)[:, 1]
-
-        links = self.is_tomek(y, nns, self.sampling_strategy_)
-        self.sample_indices_ = np.flatnonzero(np.logical_not(links))
-
-        return (
-            _safe_indexing(X, self.sample_indices_),
-            _safe_indexing(y, self.sample_indices_),
-        )
-
-    def _more_tags(self):
-        return {"sample_indices": True}
+        pass

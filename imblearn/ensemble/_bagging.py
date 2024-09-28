@@ -1,13 +1,7 @@
 """Bagging classifier trained on balanced bootstrap samples."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Christos Aridas
-# License: MIT
-
 import copy
 import numbers
 import warnings
-
 import numpy as np
 import sklearn
 from sklearn.base import clone
@@ -18,14 +12,11 @@ from sklearn.exceptions import NotFittedError
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.fixes import parse_version
 from sklearn.utils.validation import check_is_fitted
-
 try:
-    # scikit-learn >= 1.2
     from sklearn.utils.parallel import Parallel, delayed
 except (ImportError, ModuleNotFoundError):
     from joblib import Parallel
     from sklearn.utils.fixes import delayed
-
 from ..base import _ParamsValidationMixin
 from ..pipeline import Pipeline
 from ..under_sampling import RandomUnderSampler
@@ -36,15 +27,9 @@ from ..utils._docstring import _n_jobs_docstring, _random_state_docstring
 from ..utils._param_validation import HasMethods, Interval, StrOptions
 from ..utils.fixes import _fit_context
 from ._common import _bagging_parameter_constraints, _estimator_has
-
 sklearn_version = parse_version(sklearn.__version__)
 
-
-@Substitution(
-    sampling_strategy=BaseUnderSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-    random_state=_random_state_docstring,
-)
+@Substitution(sampling_strategy=BaseUnderSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring, random_state=_random_state_docstring)
 class BalancedBaggingClassifier(_ParamsValidationMixin, BaggingClassifier):
     """A Bagging classifier with additional balancing.
 
@@ -247,108 +232,30 @@ class BalancedBaggingClassifier(_ParamsValidationMixin, BaggingClassifier):
     [[ 23   0]
      [  2 225]]
     """
-
-    # make a deepcopy to not modify the original dictionary
-    if sklearn_version >= parse_version("1.4"):
+    if sklearn_version >= parse_version('1.4'):
         _parameter_constraints = copy.deepcopy(BaggingClassifier._parameter_constraints)
     else:
         _parameter_constraints = copy.deepcopy(_bagging_parameter_constraints)
+    _parameter_constraints.update({'sampling_strategy': [Interval(numbers.Real, 0, 1, closed='right'), StrOptions({'auto', 'majority', 'not minority', 'not majority', 'all'}), dict, callable], 'replacement': ['boolean'], 'sampler': [HasMethods(['fit_resample']), None]})
+    if 'base_estimator' in _parameter_constraints:
+        del _parameter_constraints['base_estimator']
 
-    _parameter_constraints.update(
-        {
-            "sampling_strategy": [
-                Interval(numbers.Real, 0, 1, closed="right"),
-                StrOptions({"auto", "majority", "not minority", "not majority", "all"}),
-                dict,
-                callable,
-            ],
-            "replacement": ["boolean"],
-            "sampler": [HasMethods(["fit_resample"]), None],
-        }
-    )
-    # TODO: remove when minimum supported version of scikit-learn is 1.4
-    if "base_estimator" in _parameter_constraints:
-        del _parameter_constraints["base_estimator"]
-
-    def __init__(
-        self,
-        estimator=None,
-        n_estimators=10,
-        *,
-        max_samples=1.0,
-        max_features=1.0,
-        bootstrap=True,
-        bootstrap_features=False,
-        oob_score=False,
-        warm_start=False,
-        sampling_strategy="auto",
-        replacement=False,
-        n_jobs=None,
-        random_state=None,
-        verbose=0,
-        sampler=None,
-    ):
-        super().__init__(
-            n_estimators=n_estimators,
-            max_samples=max_samples,
-            max_features=max_features,
-            bootstrap=bootstrap,
-            bootstrap_features=bootstrap_features,
-            oob_score=oob_score,
-            warm_start=warm_start,
-            n_jobs=n_jobs,
-            random_state=random_state,
-            verbose=verbose,
-        )
+    def __init__(self, estimator=None, n_estimators=10, *, max_samples=1.0, max_features=1.0, bootstrap=True, bootstrap_features=False, oob_score=False, warm_start=False, sampling_strategy='auto', replacement=False, n_jobs=None, random_state=None, verbose=0, sampler=None):
+        super().__init__(n_estimators=n_estimators, max_samples=max_samples, max_features=max_features, bootstrap=bootstrap, bootstrap_features=bootstrap_features, oob_score=oob_score, warm_start=warm_start, n_jobs=n_jobs, random_state=random_state, verbose=verbose)
         self.estimator = estimator
         self.sampling_strategy = sampling_strategy
         self.replacement = replacement
         self.sampler = sampler
 
-    def _validate_y(self, y):
-        y_encoded = super()._validate_y(y)
-        if (
-            isinstance(self.sampling_strategy, dict)
-            and self.sampler_._sampling_type != "bypass"
-        ):
-            self._sampling_strategy = {
-                np.where(self.classes_ == key)[0][0]: value
-                for key, value in check_sampling_strategy(
-                    self.sampling_strategy,
-                    y,
-                    self.sampler_._sampling_type,
-                ).items()
-            }
-        else:
-            self._sampling_strategy = self.sampling_strategy
-        return y_encoded
-
     def _validate_estimator(self, default=DecisionTreeClassifier()):
         """Check the estimator and the n_estimator attribute, set the
         `estimator_` attribute."""
-        if self.estimator is not None:
-            estimator = clone(self.estimator)
-        else:
-            estimator = clone(default)
+        pass
 
-        if self.sampler_._sampling_type != "bypass":
-            self.sampler_.set_params(sampling_strategy=self._sampling_strategy)
-
-        self.estimator_ = Pipeline(
-            [("sampler", self.sampler_), ("classifier", estimator)]
-        )
-
-    # TODO: remove when supporting scikit-learn>=1.2
     @property
     def n_features_(self):
         """Number of features when ``fit`` is performed."""
-        warnings.warn(
-            "`n_features_` was deprecated in scikit-learn 1.0. This attribute will "
-            "not be accessible when the minimum supported version of scikit-learn "
-            "is 1.2.",
-            FutureWarning,
-        )
-        return self.n_features_in_
+        pass
 
     @_fit_context(prefer_skip_nested_validation=False)
     def fit(self, X, y):
@@ -369,27 +276,9 @@ class BalancedBaggingClassifier(_ParamsValidationMixin, BaggingClassifier):
         self : object
             Fitted estimator.
         """
-        # overwrite the base class method by disallowing `sample_weight`
-        self._validate_params()
-        return super().fit(X, y)
+        pass
 
-    def _fit(self, X, y, max_samples=None, max_depth=None, sample_weight=None):
-        check_target_type(y)
-        # the sampler needs to be validated before to call _fit because
-        # _validate_y is called before _validate_estimator and would require
-        # to know which type of sampler we are using.
-        if self.sampler is None:
-            self.sampler_ = RandomUnderSampler(
-                replacement=self.replacement,
-            )
-        else:
-            self.sampler_ = clone(self.sampler)
-        # RandomUnderSampler is not supporting sample_weight. We need to pass
-        # None.
-        return super()._fit(X, y, self.max_samples)
-
-    # TODO: remove when minimum supported version of scikit-learn is 1.1
-    @available_if(_estimator_has("decision_function"))
+    @available_if(_estimator_has('decision_function'))
     def decision_function(self, X):
         """Average of the decision functions of the base classifiers.
 
@@ -407,57 +296,9 @@ class BalancedBaggingClassifier(_ParamsValidationMixin, BaggingClassifier):
             ``classes_``. Regression and binary classification are special
             cases with ``k == 1``, otherwise ``k==n_classes``.
         """
-        check_is_fitted(self)
-
-        # Check data
-        X = self._validate_data(
-            X,
-            accept_sparse=["csr", "csc"],
-            dtype=None,
-            force_all_finite=False,
-            reset=False,
-        )
-
-        # Parallel loop
-        n_jobs, _, starts = _partition_estimators(self.n_estimators, self.n_jobs)
-
-        all_decisions = Parallel(n_jobs=n_jobs, verbose=self.verbose)(
-            delayed(_parallel_decision_function)(
-                self.estimators_[starts[i] : starts[i + 1]],
-                self.estimators_features_[starts[i] : starts[i + 1]],
-                X,
-            )
-            for i in range(n_jobs)
-        )
-
-        # Reduce
-        decisions = sum(all_decisions) / self.n_estimators
-
-        return decisions
+        pass
 
     @property
     def base_estimator_(self):
         """Attribute for older sklearn version compatibility."""
-        error = AttributeError(
-            f"{self.__class__.__name__} object has no attribute 'base_estimator_'."
-        )
-        if sklearn_version < parse_version("1.2"):
-            # The base class require to have the attribute defined. For scikit-learn
-            # > 1.2, we are going to raise an error.
-            try:
-                check_is_fitted(self)
-                return self.estimator_
-            except NotFittedError:
-                raise error
-        raise error
-
-    def _more_tags(self):
-        tags = super()._more_tags()
-        tags_key = "_xfail_checks"
-        failing_test = "check_estimators_nan_inf"
-        reason = "Fails because the sampler removed infinity and NaN values"
-        if tags_key in tags:
-            tags[tags_key][failing_test] = reason
-        else:
-            tags[tags_key] = {failing_test: reason}
-        return tags
+        pass

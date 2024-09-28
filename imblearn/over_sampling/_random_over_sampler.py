@@ -1,28 +1,17 @@
-﻿"""Class to perform random over-sampling."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Christos Aridas
-# License: MIT
-
+"""Class to perform random over-sampling."""
 from collections.abc import Mapping
 from numbers import Real
-
 import numpy as np
 from scipy import sparse
 from sklearn.utils import _safe_indexing, check_array, check_random_state
 from sklearn.utils.sparsefuncs import mean_variance_axis
-
 from ..utils import Substitution, check_target_type
 from ..utils._docstring import _random_state_docstring
 from ..utils._param_validation import Interval
 from ..utils._validation import _check_X
 from .base import BaseOverSampler
 
-
-@Substitution(
-    sampling_strategy=BaseOverSampler._sampling_strategy_docstring,
-    random_state=_random_state_docstring,
-)
+@Substitution(sampling_strategy=BaseOverSampler._sampling_strategy_docstring, random_state=_random_state_docstring)
 class RandomOverSampler(BaseOverSampler):
     """Class to perform random over-sampling.
 
@@ -136,125 +125,9 @@ class RandomOverSampler(BaseOverSampler):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{0: 900, 1: 900}})
     """
+    _parameter_constraints: dict = {**BaseOverSampler._parameter_constraints, 'shrinkage': [Interval(Real, 0, None, closed='left'), dict, None]}
 
-    _parameter_constraints: dict = {
-        **BaseOverSampler._parameter_constraints,
-        "shrinkage": [Interval(Real, 0, None, closed="left"), dict, None],
-    }
-
-    def __init__(
-        self,
-        *,
-        sampling_strategy="auto",
-        random_state=None,
-        shrinkage=None,
-    ):
+    def __init__(self, *, sampling_strategy='auto', random_state=None, shrinkage=None):
         super().__init__(sampling_strategy=sampling_strategy)
         self.random_state = random_state
         self.shrinkage = shrinkage
-
-    def _check_X_y(self, X, y):
-        y, binarize_y = check_target_type(y, indicate_one_vs_all=True)
-        X = _check_X(X)
-        self._check_n_features(X, reset=True)
-        self._check_feature_names(X, reset=True)
-        return X, y, binarize_y
-
-    def _fit_resample(self, X, y):
-        random_state = check_random_state(self.random_state)
-
-        if isinstance(self.shrinkage, Real):
-            self.shrinkage_ = {
-                klass: self.shrinkage for klass in self.sampling_strategy_
-            }
-        elif self.shrinkage is None or isinstance(self.shrinkage, Mapping):
-            self.shrinkage_ = self.shrinkage
-
-        if self.shrinkage_ is not None:
-            missing_shrinkage_keys = (
-                self.sampling_strategy_.keys() - self.shrinkage_.keys()
-            )
-            if missing_shrinkage_keys:
-                raise ValueError(
-                    f"`shrinkage` should contain a shrinkage factor for "
-                    f"each class that will be resampled. The missing "
-                    f"classes are: {repr(missing_shrinkage_keys)}"
-                )
-
-            for klass, shrink_factor in self.shrinkage_.items():
-                if shrink_factor < 0:
-                    raise ValueError(
-                        f"The shrinkage factor needs to be >= 0. "
-                        f"Got {shrink_factor} for class {klass}."
-                    )
-
-            # smoothed bootstrap imposes to make numerical operation; we need
-            # to be sure to have only numerical data in X
-            try:
-                X = check_array(X, accept_sparse=["csr", "csc"], dtype="numeric")
-            except ValueError as exc:
-                raise ValueError(
-                    "When shrinkage is not None, X needs to contain only "
-                    "numerical data to later generate a smoothed bootstrap "
-                    "sample."
-                ) from exc
-
-        X_resampled = [X.copy()]
-        y_resampled = [y.copy()]
-
-        sample_indices = range(X.shape[0])
-        for class_sample, num_samples in self.sampling_strategy_.items():
-            target_class_indices = np.flatnonzero(y == class_sample)
-            bootstrap_indices = random_state.choice(
-                target_class_indices,
-                size=num_samples,
-                replace=True,
-            )
-            sample_indices = np.append(sample_indices, bootstrap_indices)
-            if self.shrinkage_ is not None:
-                # generate a smoothed bootstrap with a perturbation
-                n_samples, n_features = X.shape
-                smoothing_constant = (4 / ((n_features + 2) * n_samples)) ** (
-                    1 / (n_features + 4)
-                )
-                if sparse.issparse(X):
-                    _, X_class_variance = mean_variance_axis(
-                        X[target_class_indices, :],
-                        axis=0,
-                    )
-                    X_class_scale = np.sqrt(X_class_variance, out=X_class_variance)
-                else:
-                    X_class_scale = np.std(X[target_class_indices, :], axis=0)
-                smoothing_matrix = np.diagflat(
-                    self.shrinkage_[class_sample] * smoothing_constant * X_class_scale
-                )
-                X_new = random_state.randn(num_samples, n_features)
-                X_new = X_new.dot(smoothing_matrix) + X[bootstrap_indices, :]
-                if sparse.issparse(X):
-                    X_new = sparse.csr_matrix(X_new, dtype=X.dtype)
-                X_resampled.append(X_new)
-            else:
-                # generate a bootstrap
-                X_resampled.append(_safe_indexing(X, bootstrap_indices))
-
-            y_resampled.append(_safe_indexing(y, bootstrap_indices))
-
-        self.sample_indices_ = np.array(sample_indices)
-
-        if sparse.issparse(X):
-            X_resampled = sparse.vstack(X_resampled, format=X.format)
-        else:
-            X_resampled = np.vstack(X_resampled)
-        y_resampled = np.hstack(y_resampled)
-
-        return X_resampled, y_resampled
-
-    def _more_tags(self):
-        return {
-            "X_types": ["2darray", "string", "sparse", "dataframe"],
-            "sample_indices": True,
-            "allow_nan": True,
-            "_xfail_checks": {
-                "check_complex_data": "Robust to this type of data.",
-            },
-        }

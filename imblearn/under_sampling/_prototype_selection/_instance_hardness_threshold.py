@@ -1,32 +1,19 @@
 """Class to perform under-sampling based on the instance hardness
 threshold."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Dayvid Oliveira
-#          Christos Aridas
-# License: MIT
-
 import numbers
 from collections import Counter
-
 import numpy as np
 from sklearn.base import clone, is_classifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble._base import _set_random_states
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.utils import _safe_indexing, check_random_state
-
 from ...utils import Substitution
 from ...utils._docstring import _n_jobs_docstring, _random_state_docstring
 from ...utils._param_validation import HasMethods
 from ..base import BaseUnderSampler
 
-
-@Substitution(
-    sampling_strategy=BaseUnderSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-    random_state=_random_state_docstring,
-)
+@Substitution(sampling_strategy=BaseUnderSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring, random_state=_random_state_docstring)
 class InstanceHardnessThreshold(BaseUnderSampler):
     """Undersample based on the instance hardness threshold.
 
@@ -108,27 +95,9 @@ class InstanceHardnessThreshold(BaseUnderSampler):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{1: 5..., 0: 100}})
     """
+    _parameter_constraints: dict = {**BaseUnderSampler._parameter_constraints, 'estimator': [HasMethods(['fit', 'predict_proba']), None], 'cv': ['cv_object'], 'n_jobs': [numbers.Integral, None], 'random_state': ['random_state']}
 
-    _parameter_constraints: dict = {
-        **BaseUnderSampler._parameter_constraints,
-        "estimator": [
-            HasMethods(["fit", "predict_proba"]),
-            None,
-        ],
-        "cv": ["cv_object"],
-        "n_jobs": [numbers.Integral, None],
-        "random_state": ["random_state"],
-    }
-
-    def __init__(
-        self,
-        *,
-        estimator=None,
-        sampling_strategy="auto",
-        random_state=None,
-        cv=5,
-        n_jobs=None,
-    ):
+    def __init__(self, *, estimator=None, sampling_strategy='auto', random_state=None, cv=5, n_jobs=None):
         super().__init__(sampling_strategy=sampling_strategy)
         self.random_state = random_state
         self.estimator = estimator
@@ -137,68 +106,4 @@ class InstanceHardnessThreshold(BaseUnderSampler):
 
     def _validate_estimator(self, random_state):
         """Private function to create the classifier"""
-
-        if (
-            self.estimator is not None
-            and is_classifier(self.estimator)
-            and hasattr(self.estimator, "predict_proba")
-        ):
-            self.estimator_ = clone(self.estimator)
-            _set_random_states(self.estimator_, random_state)
-
-        elif self.estimator is None:
-            self.estimator_ = RandomForestClassifier(
-                n_estimators=100,
-                random_state=self.random_state,
-                n_jobs=self.n_jobs,
-            )
-
-    def _fit_resample(self, X, y):
-        random_state = check_random_state(self.random_state)
-        self._validate_estimator(random_state)
-
-        target_stats = Counter(y)
-        skf = StratifiedKFold(
-            n_splits=self.cv,
-            shuffle=True,
-            random_state=random_state,
-        )
-        probabilities = cross_val_predict(
-            self.estimator_,
-            X,
-            y,
-            cv=skf,
-            n_jobs=self.n_jobs,
-            method="predict_proba",
-        )
-        probabilities = probabilities[range(len(y)), y]
-
-        idx_under = np.empty((0,), dtype=int)
-
-        for target_class in np.unique(y):
-            if target_class in self.sampling_strategy_.keys():
-                n_samples = self.sampling_strategy_[target_class]
-                threshold = np.percentile(
-                    probabilities[y == target_class],
-                    (1.0 - (n_samples / target_stats[target_class])) * 100.0,
-                )
-                index_target_class = np.flatnonzero(
-                    probabilities[y == target_class] >= threshold
-                )
-            else:
-                index_target_class = slice(None)
-
-            idx_under = np.concatenate(
-                (
-                    idx_under,
-                    np.flatnonzero(y == target_class)[index_target_class],
-                ),
-                axis=0,
-            )
-
-        self.sample_indices_ = idx_under
-
-        return _safe_indexing(X, idx_under), _safe_indexing(y, idx_under)
-
-    def _more_tags(self):
-        return {"sample_indices": True}
+        pass

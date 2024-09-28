@@ -5,34 +5,17 @@ We remove the array_api_dispatch for the moment.
 import os
 import threading
 from contextlib import contextmanager as contextmanager
-
 import sklearn
 from sklearn.utils.fixes import parse_version
-
 sklearn_version = parse_version(sklearn.__version__)
-
-if sklearn_version < parse_version("1.3"):
-    _global_config = {
-        "assume_finite": bool(os.environ.get("SKLEARN_ASSUME_FINITE", False)),
-        "working_memory": int(os.environ.get("SKLEARN_WORKING_MEMORY", 1024)),
-        "print_changed_only": True,
-        "display": "diagram",
-        "pairwise_dist_chunk_size": int(
-            os.environ.get("SKLEARN_PAIRWISE_DIST_CHUNK_SIZE", 256)
-        ),
-        "enable_cython_pairwise_dist": True,
-        "transform_output": "default",
-        "enable_metadata_routing": False,
-        "skip_parameter_validation": False,
-    }
+if sklearn_version < parse_version('1.3'):
+    _global_config = {'assume_finite': bool(os.environ.get('SKLEARN_ASSUME_FINITE', False)), 'working_memory': int(os.environ.get('SKLEARN_WORKING_MEMORY', 1024)), 'print_changed_only': True, 'display': 'diagram', 'pairwise_dist_chunk_size': int(os.environ.get('SKLEARN_PAIRWISE_DIST_CHUNK_SIZE', 256)), 'enable_cython_pairwise_dist': True, 'transform_output': 'default', 'enable_metadata_routing': False, 'skip_parameter_validation': False}
     _threadlocal = threading.local()
 
     def _get_threadlocal_config():
         """Get a threadlocal **mutable** configuration. If the configuration
         does not exist, copy the default global configuration."""
-        if not hasattr(_threadlocal, "global_config"):
-            _threadlocal.global_config = _global_config.copy()
-        return _threadlocal.global_config
+        pass
 
     def get_config():
         """Retrieve current values for configuration set by :func:`set_config`.
@@ -47,21 +30,9 @@ if sklearn_version < parse_version("1.3"):
         config_context : Context manager for global scikit-learn configuration.
         set_config : Set global scikit-learn configuration.
         """
-        # Return a copy of the threadlocal configuration so that users will
-        # not be able to modify the configuration with the returned dict.
-        return _get_threadlocal_config().copy()
+        pass
 
-    def set_config(
-        assume_finite=None,
-        working_memory=None,
-        print_changed_only=None,
-        display=None,
-        pairwise_dist_chunk_size=None,
-        enable_cython_pairwise_dist=None,
-        transform_output=None,
-        enable_metadata_routing=None,
-        skip_parameter_validation=None,
-    ):
+    def set_config(assume_finite=None, working_memory=None, print_changed_only=None, display=None, pairwise_dist_chunk_size=None, enable_cython_pairwise_dist=None, transform_output=None, enable_metadata_routing=None, skip_parameter_validation=None):
         """Set global scikit-learn configuration
 
         .. versionadded:: 0.19
@@ -162,40 +133,10 @@ if sklearn_version < parse_version("1.3"):
         config_context : Context manager for global scikit-learn configuration.
         get_config : Retrieve current values of the global configuration.
         """
-        local_config = _get_threadlocal_config()
-
-        if assume_finite is not None:
-            local_config["assume_finite"] = assume_finite
-        if working_memory is not None:
-            local_config["working_memory"] = working_memory
-        if print_changed_only is not None:
-            local_config["print_changed_only"] = print_changed_only
-        if display is not None:
-            local_config["display"] = display
-        if pairwise_dist_chunk_size is not None:
-            local_config["pairwise_dist_chunk_size"] = pairwise_dist_chunk_size
-        if enable_cython_pairwise_dist is not None:
-            local_config["enable_cython_pairwise_dist"] = enable_cython_pairwise_dist
-        if transform_output is not None:
-            local_config["transform_output"] = transform_output
-        if enable_metadata_routing is not None:
-            local_config["enable_metadata_routing"] = enable_metadata_routing
-        if skip_parameter_validation is not None:
-            local_config["skip_parameter_validation"] = skip_parameter_validation
+        pass
 
     @contextmanager
-    def config_context(
-        *,
-        assume_finite=None,
-        working_memory=None,
-        print_changed_only=None,
-        display=None,
-        pairwise_dist_chunk_size=None,
-        enable_cython_pairwise_dist=None,
-        transform_output=None,
-        enable_metadata_routing=None,
-        skip_parameter_validation=None,
-    ):
+    def config_context(*, assume_finite=None, working_memory=None, print_changed_only=None, display=None, pairwise_dist_chunk_size=None, enable_cython_pairwise_dist=None, transform_output=None, enable_metadata_routing=None, skip_parameter_validation=None):
         """Context manager for global scikit-learn configuration.
 
         Parameters
@@ -317,28 +258,6 @@ if sklearn_version < parse_version("1.3"):
         ...
         ValueError: Input contains NaN...
         """
-        old_config = get_config()
-        set_config(
-            assume_finite=assume_finite,
-            working_memory=working_memory,
-            print_changed_only=print_changed_only,
-            display=display,
-            pairwise_dist_chunk_size=pairwise_dist_chunk_size,
-            enable_cython_pairwise_dist=enable_cython_pairwise_dist,
-            transform_output=transform_output,
-            enable_metadata_routing=enable_metadata_routing,
-            skip_parameter_validation=skip_parameter_validation,
-        )
-
-        try:
-            yield
-        finally:
-            set_config(**old_config)
-
+        pass
 else:
-    from sklearn._config import (  # type: ignore[no-redef]
-        _get_threadlocal_config,
-        _global_config,
-        config_context,  # noqa
-        get_config,
-    )
+    from sklearn._config import _get_threadlocal_config, _global_config, config_context, get_config

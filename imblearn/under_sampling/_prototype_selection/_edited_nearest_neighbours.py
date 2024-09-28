@@ -1,30 +1,17 @@
 """Classes to perform under-sampling based on the edited nearest neighbour
 method."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Dayvid Oliveira
-#          Christos Aridas
-# License: MIT
-
 import numbers
 from collections import Counter
-
 import numpy as np
 from sklearn.utils import _safe_indexing
-
 from ...utils import Substitution, check_neighbors_object
 from ...utils._docstring import _n_jobs_docstring
 from ...utils._param_validation import HasMethods, Interval, StrOptions
 from ...utils.fixes import _mode
 from ..base import BaseCleaningSampler
+SEL_KIND = ('all', 'mode')
 
-SEL_KIND = ("all", "mode")
-
-
-@Substitution(
-    sampling_strategy=BaseCleaningSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-)
+@Substitution(sampling_strategy=BaseCleaningSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring)
 class EditedNearestNeighbours(BaseCleaningSampler):
     """Undersample based on the edited nearest neighbour method.
 
@@ -122,25 +109,9 @@ class EditedNearestNeighbours(BaseCleaningSampler):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{1: 887, 0: 100}})
     """
+    _parameter_constraints: dict = {**BaseCleaningSampler._parameter_constraints, 'n_neighbors': [Interval(numbers.Integral, 1, None, closed='left'), HasMethods(['kneighbors', 'kneighbors_graph'])], 'kind_sel': [StrOptions({'all', 'mode'})], 'n_jobs': [numbers.Integral, None]}
 
-    _parameter_constraints: dict = {
-        **BaseCleaningSampler._parameter_constraints,
-        "n_neighbors": [
-            Interval(numbers.Integral, 1, None, closed="left"),
-            HasMethods(["kneighbors", "kneighbors_graph"]),
-        ],
-        "kind_sel": [StrOptions({"all", "mode"})],
-        "n_jobs": [numbers.Integral, None],
-    }
-
-    def __init__(
-        self,
-        *,
-        sampling_strategy="auto",
-        n_neighbors=3,
-        kind_sel="all",
-        n_jobs=None,
-    ):
+    def __init__(self, *, sampling_strategy='auto', n_neighbors=3, kind_sel='all', n_jobs=None):
         super().__init__(sampling_strategy=sampling_strategy)
         self.n_neighbors = n_neighbors
         self.kind_sel = kind_sel
@@ -148,55 +119,9 @@ class EditedNearestNeighbours(BaseCleaningSampler):
 
     def _validate_estimator(self):
         """Validate the estimator created in the ENN."""
-        self.nn_ = check_neighbors_object(
-            "n_neighbors", self.n_neighbors, additional_neighbor=1
-        )
-        self.nn_.set_params(**{"n_jobs": self.n_jobs})
+        pass
 
-    def _fit_resample(self, X, y):
-        self._validate_estimator()
-
-        idx_under = np.empty((0,), dtype=int)
-
-        self.nn_.fit(X)
-
-        for target_class in np.unique(y):
-            if target_class in self.sampling_strategy_.keys():
-                target_class_indices = np.flatnonzero(y == target_class)
-                X_class = _safe_indexing(X, target_class_indices)
-                y_class = _safe_indexing(y, target_class_indices)
-                nnhood_idx = self.nn_.kneighbors(X_class, return_distance=False)[:, 1:]
-                nnhood_label = y[nnhood_idx]
-                if self.kind_sel == "mode":
-                    nnhood_label, _ = _mode(nnhood_label, axis=1)
-                    nnhood_bool = np.ravel(nnhood_label) == y_class
-                elif self.kind_sel == "all":
-                    nnhood_label = nnhood_label == target_class
-                    nnhood_bool = np.all(nnhood_label, axis=1)
-                index_target_class = np.flatnonzero(nnhood_bool)
-            else:
-                index_target_class = slice(None)
-
-            idx_under = np.concatenate(
-                (
-                    idx_under,
-                    np.flatnonzero(y == target_class)[index_target_class],
-                ),
-                axis=0,
-            )
-
-        self.sample_indices_ = idx_under
-
-        return _safe_indexing(X, idx_under), _safe_indexing(y, idx_under)
-
-    def _more_tags(self):
-        return {"sample_indices": True}
-
-
-@Substitution(
-    sampling_strategy=BaseCleaningSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-)
+@Substitution(sampling_strategy=BaseCleaningSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring)
 class RepeatedEditedNearestNeighbours(BaseCleaningSampler):
     """Undersample based on the repeated edited nearest neighbour method.
 
@@ -307,27 +232,9 @@ class RepeatedEditedNearestNeighbours(BaseCleaningSampler):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{1: 887, 0: 100}})
     """
+    _parameter_constraints: dict = {**BaseCleaningSampler._parameter_constraints, 'n_neighbors': [Interval(numbers.Integral, 1, None, closed='left'), HasMethods(['kneighbors', 'kneighbors_graph'])], 'max_iter': [Interval(numbers.Integral, 1, None, closed='left')], 'kind_sel': [StrOptions({'all', 'mode'})], 'n_jobs': [numbers.Integral, None]}
 
-    _parameter_constraints: dict = {
-        **BaseCleaningSampler._parameter_constraints,
-        "n_neighbors": [
-            Interval(numbers.Integral, 1, None, closed="left"),
-            HasMethods(["kneighbors", "kneighbors_graph"]),
-        ],
-        "max_iter": [Interval(numbers.Integral, 1, None, closed="left")],
-        "kind_sel": [StrOptions({"all", "mode"})],
-        "n_jobs": [numbers.Integral, None],
-    }
-
-    def __init__(
-        self,
-        *,
-        sampling_strategy="auto",
-        n_neighbors=3,
-        max_iter=100,
-        kind_sel="all",
-        n_jobs=None,
-    ):
+    def __init__(self, *, sampling_strategy='auto', n_neighbors=3, max_iter=100, kind_sel='all', n_jobs=None):
         super().__init__(sampling_strategy=sampling_strategy)
         self.n_neighbors = n_neighbors
         self.kind_sel = kind_sel
@@ -336,88 +243,9 @@ class RepeatedEditedNearestNeighbours(BaseCleaningSampler):
 
     def _validate_estimator(self):
         """Private function to create the NN estimator"""
-        self.nn_ = check_neighbors_object(
-            "n_neighbors", self.n_neighbors, additional_neighbor=1
-        )
+        pass
 
-        self.enn_ = EditedNearestNeighbours(
-            sampling_strategy=self.sampling_strategy,
-            n_neighbors=self.nn_,
-            kind_sel=self.kind_sel,
-            n_jobs=self.n_jobs,
-        )
-
-    def _fit_resample(self, X, y):
-        self._validate_estimator()
-
-        X_, y_ = X, y
-        self.sample_indices_ = np.arange(X.shape[0], dtype=int)
-        target_stats = Counter(y)
-        class_minority = min(target_stats, key=target_stats.get)
-
-        for n_iter in range(self.max_iter):
-            prev_len = y_.shape[0]
-            X_enn, y_enn = self.enn_.fit_resample(X_, y_)
-
-            # Check the stopping criterion
-            # 1. If there is no changes for the vector y
-            # 2. If the number of samples in the other class become inferior to
-            # the number of samples in the majority class
-            # 3. If one of the class is disappearing
-
-            # Case 1
-            b_conv = prev_len == y_enn.shape[0]
-
-            # Case 2
-            stats_enn = Counter(y_enn)
-            count_non_min = np.array(
-                [
-                    val
-                    for val, key in zip(stats_enn.values(), stats_enn.keys())
-                    if key != class_minority
-                ]
-            )
-            b_min_bec_maj = np.any(count_non_min < target_stats[class_minority])
-
-            # Case 3
-            b_remove_maj_class = len(stats_enn) < len(target_stats)
-
-            (
-                X_,
-                y_,
-            ) = (
-                X_enn,
-                y_enn,
-            )
-            self.sample_indices_ = self.sample_indices_[self.enn_.sample_indices_]
-
-            if b_conv or b_min_bec_maj or b_remove_maj_class:
-                if b_conv:
-                    (
-                        X_,
-                        y_,
-                    ) = (
-                        X_enn,
-                        y_enn,
-                    )
-                    self.sample_indices_ = self.sample_indices_[
-                        self.enn_.sample_indices_
-                    ]
-                break
-
-        self.n_iter_ = n_iter + 1
-        X_resampled, y_resampled = X_, y_
-
-        return X_resampled, y_resampled
-
-    def _more_tags(self):
-        return {"sample_indices": True}
-
-
-@Substitution(
-    sampling_strategy=BaseCleaningSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-)
+@Substitution(sampling_strategy=BaseCleaningSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring)
 class AllKNN(BaseCleaningSampler):
     """Undersample based on the AllKNN method.
 
@@ -527,27 +355,9 @@ class AllKNN(BaseCleaningSampler):
     >>> print('Resampled dataset shape %s' % Counter(y_res))
     Resampled dataset shape Counter({{1: 887, 0: 100}})
     """
+    _parameter_constraints: dict = {**BaseCleaningSampler._parameter_constraints, 'n_neighbors': [Interval(numbers.Integral, 1, None, closed='left'), HasMethods(['kneighbors', 'kneighbors_graph'])], 'kind_sel': [StrOptions({'all', 'mode'})], 'allow_minority': ['boolean'], 'n_jobs': [numbers.Integral, None]}
 
-    _parameter_constraints: dict = {
-        **BaseCleaningSampler._parameter_constraints,
-        "n_neighbors": [
-            Interval(numbers.Integral, 1, None, closed="left"),
-            HasMethods(["kneighbors", "kneighbors_graph"]),
-        ],
-        "kind_sel": [StrOptions({"all", "mode"})],
-        "allow_minority": ["boolean"],
-        "n_jobs": [numbers.Integral, None],
-    }
-
-    def __init__(
-        self,
-        *,
-        sampling_strategy="auto",
-        n_neighbors=3,
-        kind_sel="all",
-        allow_minority=False,
-        n_jobs=None,
-    ):
+    def __init__(self, *, sampling_strategy='auto', n_neighbors=3, kind_sel='all', allow_minority=False, n_jobs=None):
         super().__init__(sampling_strategy=sampling_strategy)
         self.n_neighbors = n_neighbors
         self.kind_sel = kind_sel
@@ -556,68 +366,4 @@ class AllKNN(BaseCleaningSampler):
 
     def _validate_estimator(self):
         """Create objects required by AllKNN"""
-        self.nn_ = check_neighbors_object(
-            "n_neighbors", self.n_neighbors, additional_neighbor=1
-        )
-
-        self.enn_ = EditedNearestNeighbours(
-            sampling_strategy=self.sampling_strategy,
-            n_neighbors=self.nn_,
-            kind_sel=self.kind_sel,
-            n_jobs=self.n_jobs,
-        )
-
-    def _fit_resample(self, X, y):
-        self._validate_estimator()
-
-        X_, y_ = X, y
-        target_stats = Counter(y)
-        class_minority = min(target_stats, key=target_stats.get)
-
-        self.sample_indices_ = np.arange(X.shape[0], dtype=int)
-
-        for curr_size_ngh in range(1, self.nn_.n_neighbors):
-            self.enn_.n_neighbors = curr_size_ngh
-
-            X_enn, y_enn = self.enn_.fit_resample(X_, y_)
-
-            # Check the stopping criterion
-            # 1. If the number of samples in the other class become inferior to
-            # the number of samples in the majority class
-            # 2. If one of the class is disappearing
-            # Case 1else:
-
-            stats_enn = Counter(y_enn)
-            count_non_min = np.array(
-                [
-                    val
-                    for val, key in zip(stats_enn.values(), stats_enn.keys())
-                    if key != class_minority
-                ]
-            )
-            b_min_bec_maj = np.any(count_non_min < target_stats[class_minority])
-            if self.allow_minority:
-                # overwrite b_min_bec_maj
-                b_min_bec_maj = False
-
-            # Case 2
-            b_remove_maj_class = len(stats_enn) < len(target_stats)
-
-            (
-                X_,
-                y_,
-            ) = (
-                X_enn,
-                y_enn,
-            )
-            self.sample_indices_ = self.sample_indices_[self.enn_.sample_indices_]
-
-            if b_min_bec_maj or b_remove_maj_class:
-                break
-
-        X_resampled, y_resampled = X_, y_
-
-        return X_resampled, y_resampled
-
-    def _more_tags(self):
-        return {"sample_indices": True}
+        pass

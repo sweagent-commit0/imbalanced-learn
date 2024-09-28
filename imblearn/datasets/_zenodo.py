@@ -39,84 +39,28 @@ References
    Imbalanced Data Learning and their Application in Bioinformatics."
    Dissertation, Georgia State University, (2011).
 """
-
-# Author: Guillaume Lemaitre
-# License: BSD 3 clause
-
 import tarfile
 from collections import OrderedDict
 from io import BytesIO
 from os import makedirs
 from os.path import isfile, join
 from urllib.request import urlopen
-
 import numpy as np
 from sklearn.datasets import get_data_home
 from sklearn.utils import Bunch, check_random_state
-
 from ..utils._param_validation import validate_params
-
-URL = "https://zenodo.org/record/61452/files/benchmark-imbalanced-learn.tar.gz"
-PRE_FILENAME = "x"
-POST_FILENAME = "data.npz"
-
-MAP_NAME_ID_KEYS = [
-    "ecoli",
-    "optical_digits",
-    "satimage",
-    "pen_digits",
-    "abalone",
-    "sick_euthyroid",
-    "spectrometer",
-    "car_eval_34",
-    "isolet",
-    "us_crime",
-    "yeast_ml8",
-    "scene",
-    "libras_move",
-    "thyroid_sick",
-    "coil_2000",
-    "arrhythmia",
-    "solar_flare_m0",
-    "oil",
-    "car_eval_4",
-    "wine_quality",
-    "letter_img",
-    "yeast_me2",
-    "webpage",
-    "ozone_level",
-    "mammography",
-    "protein_homo",
-    "abalone_19",
-]
-
+URL = 'https://zenodo.org/record/61452/files/benchmark-imbalanced-learn.tar.gz'
+PRE_FILENAME = 'x'
+POST_FILENAME = 'data.npz'
+MAP_NAME_ID_KEYS = ['ecoli', 'optical_digits', 'satimage', 'pen_digits', 'abalone', 'sick_euthyroid', 'spectrometer', 'car_eval_34', 'isolet', 'us_crime', 'yeast_ml8', 'scene', 'libras_move', 'thyroid_sick', 'coil_2000', 'arrhythmia', 'solar_flare_m0', 'oil', 'car_eval_4', 'wine_quality', 'letter_img', 'yeast_me2', 'webpage', 'ozone_level', 'mammography', 'protein_homo', 'abalone_19']
 MAP_NAME_ID = OrderedDict()
 MAP_ID_NAME = OrderedDict()
 for v, k in enumerate(MAP_NAME_ID_KEYS):
     MAP_NAME_ID[k] = v + 1
     MAP_ID_NAME[v + 1] = k
 
-
-@validate_params(
-    {
-        "data_home": [None, str],
-        "filter_data": [None, tuple],
-        "download_if_missing": ["boolean"],
-        "random_state": ["random_state"],
-        "shuffle": ["boolean"],
-        "verbose": ["boolean"],
-    },
-    prefer_skip_nested_validation=True,
-)
-def fetch_datasets(
-    *,
-    data_home=None,
-    filter_data=None,
-    download_if_missing=True,
-    random_state=None,
-    shuffle=False,
-    verbose=False,
-):
+@validate_params({'data_home': [None, str], 'filter_data': [None, tuple], 'download_if_missing': ['boolean'], 'random_state': ['random_state'], 'shuffle': ['boolean'], 'verbose': ['boolean']}, prefer_skip_nested_validation=True)
+def fetch_datasets(*, data_home=None, filter_data=None, download_if_missing=True, random_state=None, shuffle=False, verbose=False):
     """Load the benchmark datasets from Zenodo, downloading it if necessary.
 
     .. versionadded:: 0.3
@@ -231,68 +175,4 @@ def fetch_datasets(
        Imbalanced Data Learning and their Application in Bioinformatics."
        Dissertation, Georgia State University, (2011).
     """
-
-    data_home = get_data_home(data_home=data_home)
-    zenodo_dir = join(data_home, "zenodo")
-    datasets = OrderedDict()
-
-    if filter_data is None:
-        filter_data_ = MAP_NAME_ID.keys()
-    else:
-        list_data = MAP_NAME_ID.keys()
-        filter_data_ = []
-        for it in filter_data:
-            if isinstance(it, str):
-                if it not in list_data:
-                    raise ValueError(
-                        f"{it} is not a dataset available. "
-                        f"The available datasets are {list_data}"
-                    )
-                else:
-                    filter_data_.append(it)
-            elif isinstance(it, int):
-                if it < 1 or it > 27:
-                    raise ValueError(
-                        f"The dataset with the ID={it} is not an "
-                        f"available dataset. The IDs are "
-                        f"{range(1, 28)}"
-                    )
-                else:
-                    # The index start at one, then we need to remove one
-                    # to not have issue with the indexing.
-                    filter_data_.append(MAP_ID_NAME[it])
-            else:
-                raise ValueError(
-                    f"The value in the tuple should be str or int."
-                    f" Got {type(it)} instead."
-                )
-
-    # go through the list and check if the data are available
-    for it in filter_data_:
-        filename = PRE_FILENAME + str(MAP_NAME_ID[it]) + POST_FILENAME
-        filename = join(zenodo_dir, filename)
-        available = isfile(filename)
-
-        if download_if_missing and not available:
-            makedirs(zenodo_dir, exist_ok=True)
-            if verbose:
-                print("Downloading %s" % URL)
-            f = BytesIO(urlopen(URL).read())
-            tar = tarfile.open(fileobj=f)
-            tar.extractall(path=zenodo_dir)
-        elif not download_if_missing and not available:
-            raise IOError("Data not found and `download_if_missing` is False")
-
-        data = np.load(filename)
-        X, y = data["data"], data["label"]
-
-        if shuffle:
-            ind = np.arange(X.shape[0])
-            rng = check_random_state(random_state)
-            rng.shuffle(ind)
-            X = X[ind]
-            y = y[ind]
-
-        datasets[it] = Bunch(data=X, target=y, DESCR=it)
-
-    return datasets
+    pass

@@ -1,31 +1,19 @@
-﻿"""Base class for sampling"""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Christos Aridas
-# License: MIT
-
+"""Base class for sampling"""
 from abc import ABCMeta, abstractmethod
-
 import numpy as np
 import sklearn
 from sklearn.base import BaseEstimator
-
 try:
-    # scikit-learn >= 1.2
     from sklearn.base import OneToOneFeatureMixin
 except ImportError:
     from sklearn.base import _OneToOneFeatureMixin as OneToOneFeatureMixin
-
 from sklearn.preprocessing import label_binarize
 from sklearn.utils.fixes import parse_version
 from sklearn.utils.multiclass import check_classification_targets
-
 from .utils import check_sampling_strategy, check_target_type
 from .utils._param_validation import validate_parameter_constraints
 from .utils._validation import ArraysTransformer
-
 sklearn_version = parse_version(sklearn.__version__)
-
 
 class _ParamsValidationMixin:
     """Mixin class to validate parameters."""
@@ -38,13 +26,7 @@ class _ParamsValidationMixin:
         the docstring of `validate_parameter_constraints` for a description of the
         accepted constraints.
         """
-        if hasattr(self, "_parameter_constraints"):
-            validate_parameter_constraints(
-                self._parameter_constraints,
-                self.get_params(deep=False),
-                caller_name=self.__class__.__name__,
-            )
-
+        pass
 
 class SamplerMixin(_ParamsValidationMixin, BaseEstimator, metaclass=ABCMeta):
     """Mixin class for samplers with abstract method.
@@ -52,8 +34,7 @@ class SamplerMixin(_ParamsValidationMixin, BaseEstimator, metaclass=ABCMeta):
     Warning: This class should not be used directly. Use the derive classes
     instead.
     """
-
-    _estimator_type = "sampler"
+    _estimator_type = 'sampler'
 
     def fit(self, X, y):
         """Check inputs and statistics of the sampler.
@@ -62,8 +43,7 @@ class SamplerMixin(_ParamsValidationMixin, BaseEstimator, metaclass=ABCMeta):
 
         Parameters
         ----------
-        X : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples, n_features)
+        X : {array-like, dataframe, sparse matrix} of shape                 (n_samples, n_features)
             Data array.
 
         y : array-like of shape (n_samples,)
@@ -74,19 +54,14 @@ class SamplerMixin(_ParamsValidationMixin, BaseEstimator, metaclass=ABCMeta):
         self : object
             Return the instance itself.
         """
-        X, y, _ = self._check_X_y(X, y)
-        self.sampling_strategy_ = check_sampling_strategy(
-            self.sampling_strategy, y, self._sampling_type
-        )
-        return self
+        pass
 
     def fit_resample(self, X, y):
         """Resample the dataset.
 
         Parameters
         ----------
-        X : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples, n_features)
+        X : {array-like, dataframe, sparse matrix} of shape                 (n_samples, n_features)
             Matrix containing the data which have to be sampled.
 
         y : array-like of shape (n_samples,)
@@ -94,29 +69,13 @@ class SamplerMixin(_ParamsValidationMixin, BaseEstimator, metaclass=ABCMeta):
 
         Returns
         -------
-        X_resampled : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples_new, n_features)
+        X_resampled : {array-like, dataframe, sparse matrix} of shape                 (n_samples_new, n_features)
             The array containing the resampled data.
 
         y_resampled : array-like of shape (n_samples_new,)
             The corresponding label of `X_resampled`.
         """
-        check_classification_targets(y)
-        arrays_transformer = ArraysTransformer(X, y)
-        X, y, binarize_y = self._check_X_y(X, y)
-
-        self.sampling_strategy_ = check_sampling_strategy(
-            self.sampling_strategy, y, self._sampling_type
-        )
-
-        output = self._fit_resample(X, y)
-
-        y_ = (
-            label_binarize(output[1], classes=np.unique(y)) if binarize_y else output[1]
-        )
-
-        X_, y_ = arrays_transformer.transform(output[0], y_)
-        return (X_, y_) if len(output) == 2 else (X_, y_, output[2])
+        pass
 
     @abstractmethod
     def _fit_resample(self, X, y):
@@ -133,8 +92,7 @@ class SamplerMixin(_ParamsValidationMixin, BaseEstimator, metaclass=ABCMeta):
 
         Returns
         -------
-        X_resampled : {ndarray, sparse matrix} of shape \
-                (n_samples_new, n_features)
+        X_resampled : {ndarray, sparse matrix} of shape                 (n_samples_new, n_features)
             The array containing the resampled data.
 
         y_resampled : ndarray of shape (n_samples_new,)
@@ -143,7 +101,6 @@ class SamplerMixin(_ParamsValidationMixin, BaseEstimator, metaclass=ABCMeta):
         """
         pass
 
-
 class BaseSampler(SamplerMixin, OneToOneFeatureMixin):
     """Base class for sampling algorithms.
 
@@ -151,15 +108,8 @@ class BaseSampler(SamplerMixin, OneToOneFeatureMixin):
     instead.
     """
 
-    def __init__(self, sampling_strategy="auto"):
+    def __init__(self, sampling_strategy='auto'):
         self.sampling_strategy = sampling_strategy
-
-    def _check_X_y(self, X, y, accept_sparse=None):
-        if accept_sparse is None:
-            accept_sparse = ["csr", "csc"]
-        y, binarize_y = check_target_type(y, indicate_one_vs_all=True)
-        X, y = self._validate_data(X, y, reset=True, accept_sparse=accept_sparse)
-        return X, y, binarize_y
 
     def fit(self, X, y):
         """Check inputs and statistics of the sampler.
@@ -168,8 +118,7 @@ class BaseSampler(SamplerMixin, OneToOneFeatureMixin):
 
         Parameters
         ----------
-        X : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples, n_features)
+        X : {array-like, dataframe, sparse matrix} of shape                 (n_samples, n_features)
             Data array.
 
         y : array-like of shape (n_samples,)
@@ -180,16 +129,14 @@ class BaseSampler(SamplerMixin, OneToOneFeatureMixin):
         self : object
             Return the instance itself.
         """
-        self._validate_params()
-        return super().fit(X, y)
+        pass
 
     def fit_resample(self, X, y):
         """Resample the dataset.
 
         Parameters
         ----------
-        X : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples, n_features)
+        X : {array-like, dataframe, sparse matrix} of shape                 (n_samples, n_features)
             Matrix containing the data which have to be sampled.
 
         y : array-like of shape (n_samples,)
@@ -197,23 +144,13 @@ class BaseSampler(SamplerMixin, OneToOneFeatureMixin):
 
         Returns
         -------
-        X_resampled : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples_new, n_features)
+        X_resampled : {array-like, dataframe, sparse matrix} of shape                 (n_samples_new, n_features)
             The array containing the resampled data.
 
         y_resampled : array-like of shape (n_samples_new,)
             The corresponding label of `X_resampled`.
         """
-        self._validate_params()
-        return super().fit_resample(X, y)
-
-    def _more_tags(self):
-        return {"X_types": ["2darray", "sparse", "dataframe"]}
-
-
-def _identity(X, y):
-    return X, y
-
+        pass
 
 def is_sampler(estimator):
     """Return True if the given estimator is a sampler, False otherwise.
@@ -228,10 +165,7 @@ def is_sampler(estimator):
     is_sampler : bool
         True if estimator is a sampler, otherwise False.
     """
-    if estimator._estimator_type == "sampler":
-        return True
-    return False
-
+    pass
 
 class FunctionSampler(BaseSampler):
     """Construct a sampler from calling an arbitrary callable.
@@ -321,15 +255,8 @@ class FunctionSampler(BaseSampler):
     >>> print(f'Resampled dataset shape {sorted(Counter(y_res).items())}')
     Resampled dataset shape [(0, 100), (1, 100)]
     """
-
-    _sampling_type = "bypass"
-
-    _parameter_constraints: dict = {
-        "func": [callable, None],
-        "accept_sparse": ["boolean"],
-        "kw_args": [dict, None],
-        "validate": ["boolean"],
-    }
+    _sampling_type = 'bypass'
+    _parameter_constraints: dict = {'func': [callable, None], 'accept_sparse': ['boolean'], 'kw_args': [dict, None], 'validate': ['boolean']}
 
     def __init__(self, *, func=None, accept_sparse=True, kw_args=None, validate=True):
         super().__init__()
@@ -345,8 +272,7 @@ class FunctionSampler(BaseSampler):
 
         Parameters
         ----------
-        X : {array-like, dataframe, sparse matrix} of shape \
-                (n_samples, n_features)
+        X : {array-like, dataframe, sparse matrix} of shape                 (n_samples, n_features)
             Data array.
 
         y : array-like of shape (n_samples,)
@@ -357,17 +283,7 @@ class FunctionSampler(BaseSampler):
         self : object
             Return the instance itself.
         """
-        self._validate_params()
-        # we need to overwrite SamplerMixin.fit to bypass the validation
-        if self.validate:
-            check_classification_targets(y)
-            X, y, _ = self._check_X_y(X, y, accept_sparse=self.accept_sparse)
-
-        self.sampling_strategy_ = check_sampling_strategy(
-            self.sampling_strategy, y, self._sampling_type
-        )
-
-        return self
+        pass
 
     def fit_resample(self, X, y):
         """Resample the dataset.
@@ -382,38 +298,10 @@ class FunctionSampler(BaseSampler):
 
         Returns
         -------
-        X_resampled : {array-like, sparse matrix} of shape \
-                (n_samples_new, n_features)
+        X_resampled : {array-like, sparse matrix} of shape                 (n_samples_new, n_features)
             The array containing the resampled data.
 
         y_resampled : array-like of shape (n_samples_new,)
             The corresponding label of `X_resampled`.
         """
-        self._validate_params()
-        arrays_transformer = ArraysTransformer(X, y)
-
-        if self.validate:
-            check_classification_targets(y)
-            X, y, binarize_y = self._check_X_y(X, y, accept_sparse=self.accept_sparse)
-
-        self.sampling_strategy_ = check_sampling_strategy(
-            self.sampling_strategy, y, self._sampling_type
-        )
-
-        output = self._fit_resample(X, y)
-
-        if self.validate:
-            y_ = (
-                label_binarize(output[1], classes=np.unique(y))
-                if binarize_y
-                else output[1]
-            )
-            X_, y_ = arrays_transformer.transform(output[0], y_)
-            return (X_, y_) if len(output) == 2 else (X_, y_, output[2])
-
-        return output
-
-    def _fit_resample(self, X, y):
-        func = _identity if self.func is None else self.func
-        output = func(X, y, **(self.kw_args if self.kw_args else {}))
-        return output
+        pass

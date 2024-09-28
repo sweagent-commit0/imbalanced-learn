@@ -1,17 +1,12 @@
 """This is a copy of sklearn/utils/_available_if.py. It can be removed when
 we support scikit-learn >= 1.1.
 """
-# mypy: ignore-errors
-
 from functools import update_wrapper, wraps
 from types import MethodType
-
 import sklearn
 from sklearn.utils.fixes import parse_version
-
 sklearn_version = parse_version(sklearn.__version__)
-
-if sklearn_version < parse_version("1.1"):
+if sklearn_version < parse_version('1.1'):
 
     class _AvailableIfDescriptor:
         """Implements a conditional property using the descriptor protocol.
@@ -28,30 +23,21 @@ if sklearn_version < parse_version("1.1"):
             self.fn = fn
             self.check = check
             self.attribute_name = attribute_name
-
-            # update the docstring of the descriptor
             update_wrapper(self, fn)
 
         def __get__(self, obj, owner=None):
-            attr_err = AttributeError(
-                f"This {owner.__name__!r} has no attribute {self.attribute_name!r}"
-            )
+            attr_err = AttributeError(f'This {owner.__name__!r} has no attribute {self.attribute_name!r}')
             if obj is not None:
-                # delegate only on instances, not the classes.
-                # this is to allow access to the docstrings.
                 if not self.check(obj):
                     raise attr_err
                 out = MethodType(self.fn, obj)
-
             else:
-                # This makes it possible to use the decorated method as an
-                # unbound method, for instance when monkeypatching.
+
                 @wraps(self.fn)
                 def out(*args, **kwargs):
                     if not self.check(args[0]):
                         raise attr_err
                     return self.fn(*args, **kwargs)
-
             return out
 
     def available_if(check):
@@ -93,7 +79,6 @@ if sklearn_version < parse_version("1.1"):
         >>> obj.say_hello()
         Hello
         """
-        return lambda fn: _AvailableIfDescriptor(fn, check, attribute_name=fn.__name__)
-
+        pass
 else:
-    from sklearn.utils.metaestimators import available_if  # noqa
+    from sklearn.utils.metaestimators import available_if

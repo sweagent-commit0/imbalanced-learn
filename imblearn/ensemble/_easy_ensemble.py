@@ -1,13 +1,7 @@
 """Class to perform under-sampling using easy ensemble."""
-
-# Authors: Guillaume Lemaitre <g.lemaitre58@gmail.com>
-#          Christos Aridas
-# License: MIT
-
 import copy
 import numbers
 import warnings
-
 import numpy as np
 import sklearn
 from sklearn.base import clone
@@ -18,14 +12,11 @@ from sklearn.exceptions import NotFittedError
 from sklearn.utils._tags import _safe_tags
 from sklearn.utils.fixes import parse_version
 from sklearn.utils.validation import check_is_fitted
-
 try:
-    # scikit-learn >= 1.2
     from sklearn.utils.parallel import Parallel, delayed
 except (ImportError, ModuleNotFoundError):
     from joblib import Parallel
     from sklearn.utils.fixes import delayed
-
 from ..base import _ParamsValidationMixin
 from ..pipeline import Pipeline
 from ..under_sampling import RandomUnderSampler
@@ -36,16 +27,10 @@ from ..utils._docstring import _n_jobs_docstring, _random_state_docstring
 from ..utils._param_validation import Interval, StrOptions
 from ..utils.fixes import _fit_context
 from ._common import _bagging_parameter_constraints, _estimator_has
-
 MAX_INT = np.iinfo(np.int32).max
 sklearn_version = parse_version(sklearn.__version__)
 
-
-@Substitution(
-    sampling_strategy=BaseUnderSampler._sampling_strategy_docstring,
-    n_jobs=_n_jobs_docstring,
-    random_state=_random_state_docstring,
-)
+@Substitution(sampling_strategy=BaseUnderSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring, random_state=_random_state_docstring)
 class EasyEnsembleClassifier(_ParamsValidationMixin, BaggingClassifier):
     """Bag of balanced boosted learners also known as EasyEnsemble.
 
@@ -172,106 +157,32 @@ class EasyEnsembleClassifier(_ParamsValidationMixin, BaggingClassifier):
     [[ 23   0]
      [  2 225]]
     """
-
-    # make a deepcopy to not modify the original dictionary
-    if sklearn_version >= parse_version("1.4"):
+    if sklearn_version >= parse_version('1.4'):
         _parameter_constraints = copy.deepcopy(BaggingClassifier._parameter_constraints)
     else:
         _parameter_constraints = copy.deepcopy(_bagging_parameter_constraints)
-
-    excluded_params = {
-        "bootstrap",
-        "bootstrap_features",
-        "max_features",
-        "oob_score",
-        "max_samples",
-    }
+    excluded_params = {'bootstrap', 'bootstrap_features', 'max_features', 'oob_score', 'max_samples'}
     for param in excluded_params:
         _parameter_constraints.pop(param, None)
+    _parameter_constraints.update({'sampling_strategy': [Interval(numbers.Real, 0, 1, closed='right'), StrOptions({'auto', 'majority', 'not minority', 'not majority', 'all'}), dict, callable], 'replacement': ['boolean']})
+    if 'base_estimator' in _parameter_constraints:
+        del _parameter_constraints['base_estimator']
 
-    _parameter_constraints.update(
-        {
-            "sampling_strategy": [
-                Interval(numbers.Real, 0, 1, closed="right"),
-                StrOptions({"auto", "majority", "not minority", "not majority", "all"}),
-                dict,
-                callable,
-            ],
-            "replacement": ["boolean"],
-        }
-    )
-    # TODO: remove when minimum supported version of scikit-learn is 1.4
-    if "base_estimator" in _parameter_constraints:
-        del _parameter_constraints["base_estimator"]
-
-    def __init__(
-        self,
-        n_estimators=10,
-        estimator=None,
-        *,
-        warm_start=False,
-        sampling_strategy="auto",
-        replacement=False,
-        n_jobs=None,
-        random_state=None,
-        verbose=0,
-    ):
-        super().__init__(
-            n_estimators=n_estimators,
-            max_samples=1.0,
-            max_features=1.0,
-            bootstrap=False,
-            bootstrap_features=False,
-            oob_score=False,
-            warm_start=warm_start,
-            n_jobs=n_jobs,
-            random_state=random_state,
-            verbose=verbose,
-        )
+    def __init__(self, n_estimators=10, estimator=None, *, warm_start=False, sampling_strategy='auto', replacement=False, n_jobs=None, random_state=None, verbose=0):
+        super().__init__(n_estimators=n_estimators, max_samples=1.0, max_features=1.0, bootstrap=False, bootstrap_features=False, oob_score=False, warm_start=warm_start, n_jobs=n_jobs, random_state=random_state, verbose=verbose)
         self.estimator = estimator
         self.sampling_strategy = sampling_strategy
         self.replacement = replacement
 
-    def _validate_y(self, y):
-        y_encoded = super()._validate_y(y)
-        if isinstance(self.sampling_strategy, dict):
-            self._sampling_strategy = {
-                np.where(self.classes_ == key)[0][0]: value
-                for key, value in check_sampling_strategy(
-                    self.sampling_strategy,
-                    y,
-                    "under-sampling",
-                ).items()
-            }
-        else:
-            self._sampling_strategy = self.sampling_strategy
-        return y_encoded
-
-    def _validate_estimator(self, default=AdaBoostClassifier(algorithm="SAMME")):
+    def _validate_estimator(self, default=AdaBoostClassifier(algorithm='SAMME')):
         """Check the estimator and the n_estimator attribute, set the
         `estimator_` attribute."""
-        if self.estimator is not None:
-            estimator = clone(self.estimator)
-        else:
-            estimator = clone(default)
+        pass
 
-        sampler = RandomUnderSampler(
-            sampling_strategy=self._sampling_strategy,
-            replacement=self.replacement,
-        )
-        self.estimator_ = Pipeline([("sampler", sampler), ("classifier", estimator)])
-
-    # TODO: remove when supporting scikit-learn>=1.2
     @property
     def n_features_(self):
         """Number of features when ``fit`` is performed."""
-        warnings.warn(
-            "`n_features_` was deprecated in scikit-learn 1.0. This attribute will "
-            "not be accessible when the minimum supported version of scikit-learn "
-            "is 1.2.",
-            FutureWarning,
-        )
-        return self.n_features_in_
+        pass
 
     @_fit_context(prefer_skip_nested_validation=False)
     def fit(self, X, y):
@@ -292,18 +203,9 @@ class EasyEnsembleClassifier(_ParamsValidationMixin, BaggingClassifier):
         self : object
             Fitted estimator.
         """
-        self._validate_params()
-        # overwrite the base class method by disallowing `sample_weight`
-        return super().fit(X, y)
+        pass
 
-    def _fit(self, X, y, max_samples=None, max_depth=None, sample_weight=None):
-        check_target_type(y)
-        # RandomUnderSampler is not supporting sample_weight. We need to pass
-        # None.
-        return super()._fit(X, y, self.max_samples)
-
-    # TODO: remove when minimum supported version of scikit-learn is 1.1
-    @available_if(_estimator_has("decision_function"))
+    @available_if(_estimator_has('decision_function'))
     def decision_function(self, X):
         """Average of the decision functions of the base classifiers.
 
@@ -321,55 +223,9 @@ class EasyEnsembleClassifier(_ParamsValidationMixin, BaggingClassifier):
             ``classes_``. Regression and binary classification are special
             cases with ``k == 1``, otherwise ``k==n_classes``.
         """
-        check_is_fitted(self)
-
-        # Check data
-        X = self._validate_data(
-            X,
-            accept_sparse=["csr", "csc"],
-            dtype=None,
-            force_all_finite=False,
-            reset=False,
-        )
-
-        # Parallel loop
-        n_jobs, _, starts = _partition_estimators(self.n_estimators, self.n_jobs)
-
-        all_decisions = Parallel(n_jobs=n_jobs, verbose=self.verbose)(
-            delayed(_parallel_decision_function)(
-                self.estimators_[starts[i] : starts[i + 1]],
-                self.estimators_features_[starts[i] : starts[i + 1]],
-                X,
-            )
-            for i in range(n_jobs)
-        )
-
-        # Reduce
-        decisions = sum(all_decisions) / self.n_estimators
-
-        return decisions
+        pass
 
     @property
     def base_estimator_(self):
         """Attribute for older sklearn version compatibility."""
-        error = AttributeError(
-            f"{self.__class__.__name__} object has no attribute 'base_estimator_'."
-        )
-        if sklearn_version < parse_version("1.2"):
-            # The base class require to have the attribute defined. For scikit-learn
-            # > 1.2, we are going to raise an error.
-            try:
-                check_is_fitted(self)
-                return self.estimator_
-            except NotFittedError:
-                raise error
-        raise error
-
-    def _get_estimator(self):
-        if self.estimator is None:
-            return AdaBoostClassifier(algorithm="SAMME")
-        return self.estimator
-
-    # TODO: remove when minimum supported version of scikit-learn is 1.5
-    def _more_tags(self):
-        return {"allow_nan": _safe_tags(self._get_estimator(), "allow_nan")}
+        pass
