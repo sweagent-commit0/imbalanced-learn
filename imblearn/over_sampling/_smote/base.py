@@ -39,8 +39,8 @@ class BaseSMOTE(BaseOverSampler):
         """Check the NN estimators shared across the different SMOTE
         algorithms.
         """
-        pass
-
+        self.nn_ = check_neighbors_object('k_neighbors', self.k_neighbors, additional_neighbor=1)
+        self.nn_.set_params(**{'n_jobs': self.n_jobs})
     def _make_samples(self, X, y_dtype, y_type, nn_data, nn_num, n_samples, step_size=1.0, y=None):
         """A support function that returns artificial samples constructed along
         the line connecting nearest neighbours.
@@ -82,7 +82,15 @@ class BaseSMOTE(BaseOverSampler):
         y_new : ndarray of shape (n_samples_new,)
             Target values for synthetic samples.
         """
-        pass
+        random_state = check_random_state(self.random_state)
+        samples_indices = random_state.randint(low=0, high=nn_num.size, size=n_samples)
+        steps = step_size * random_state.uniform(size=n_samples)
+        rows = np.floor_divide(samples_indices, nn_num.shape[1])
+        cols = np.mod(samples_indices, nn_num.shape[1])
+
+        X_new, y_new = self._generate_samples(X, nn_data, nn_num, rows, cols, steps, y_type, y)
+
+        return X_new, y_new
 
     def _generate_samples(self, X, nn_data, nn_num, rows, cols, steps, y_type=None, y=None):
         """Generate a synthetic sample.
@@ -131,8 +139,23 @@ class BaseSMOTE(BaseOverSampler):
         -------
         X_new : {ndarray, sparse matrix} of shape (n_samples, n_features)
             Synthetically generated samples.
+
+        y_new : ndarray of shape (n_samples,)
+            Target values for synthetic samples.
         """
-        pass
+        n_samples, n_features = X.shape
+        X_new = np.zeros((steps.shape[0], n_features))
+        
+        if sparse.issparse(X):
+            for i, (row, col, step) in enumerate(zip(rows, cols, steps)):
+                X_new[i] = X[row].toarray() + step * (nn_data[nn_num[row, col]].toarray() - X[row].toarray())
+        else:
+            for i, (row, col, step) in enumerate(zip(rows, cols, steps)):
+                X_new[i] = X[row] + step * (nn_data[nn_num[row, col]] - X[row])
+        
+        y_new = np.full(steps.shape[0], fill_value=y_type)
+        
+        return X_new, y_new
 
     def _in_danger_noise(self, nn_estimator, samples, target_class, y, kind='danger'):
         """Estimate if a set of sample are in danger or noise.
@@ -166,7 +189,17 @@ class BaseSMOTE(BaseOverSampler):
         output : ndarray of shape (n_samples,)
             A boolean array where True refer to samples in danger or noise.
         """
-        pass
+        x = nn_estimator.kneighbors(samples, return_distance=False)[:, 1:]
+        nn_label = (y[x] != target_class).astype(int).sum(axis=1)
+        
+        if kind == 'danger':
+            # Samples are in danger if some but not all neighbors are of a different class
+            return (nn_label > 0) & (nn_label < x.shape[1])
+        elif kind == 'noise':
+            # Samples are noise if all neighbors are of a different class
+            return nn_label == x.shape[1]
+        else:
+            raise ValueError("'kind' should be either 'danger' or 'noise'.")
 
 @Substitution(sampling_strategy=BaseOverSampler._sampling_strategy_docstring, n_jobs=_n_jobs_docstring, random_state=_random_state_docstring)
 class SMOTE(BaseSMOTE):
